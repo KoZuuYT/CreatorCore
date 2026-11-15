@@ -1,13 +1,17 @@
 package dev.creatorcore.item;
 
+import dev.creatorcore.CreatorCorePlugin;
 import dev.creatorcore.registry.Creation;
 import dev.creatorcore.registry.CreationType;
 import java.util.List;
+import java.util.Map;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.attribute.AttributeModifier;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -15,8 +19,13 @@ import org.bukkit.persistence.PersistentDataType;
 /**
  * Definição de um item customizado, lida de {@code plugins/CreatorCore/items/*.yml}.
  * O item criado carrega o id em {@code creatorcore:id} para ser reconhecido depois.
+ *
+ * @param attributes modificadores de atributo; se houver algum, SUBSTITUEM os do item base (ex.: o dano da espada)
+ * @param recipe     receita de criação, ou {@code null}
  */
-public record ItemDefinition(String id, Material material, String name, List<String> lore) implements Creation {
+public record ItemDefinition(String id, Material material, String name, List<String> lore,
+                             List<AttributeSpec> attributes, Map<Enchantment, Integer> enchantments,
+                             boolean unbreakable, boolean glint, RecipeSpec recipe) implements Creation {
 
     private static final MiniMessage MM = MiniMessage.miniMessage();
 
@@ -25,7 +34,7 @@ public record ItemDefinition(String id, Material material, String name, List<Str
         return CreationType.ITEM;
     }
 
-    public ItemStack create(NamespacedKey idKey, int amount) {
+    public ItemStack create(CreatorCorePlugin plugin, int amount) {
         ItemStack stack = new ItemStack(material, Math.max(1, amount));
         ItemMeta meta = stack.getItemMeta();
         if (name != null && !name.isBlank()) {
@@ -34,7 +43,21 @@ public record ItemDefinition(String id, Material material, String name, List<Str
         if (!lore.isEmpty()) {
             meta.lore(lore.stream().map(line -> noItalic(MM.deserialize(line))).toList());
         }
-        meta.getPersistentDataContainer().set(idKey, PersistentDataType.STRING, id);
+        int index = 0;
+        for (AttributeSpec spec : attributes) {
+            // Chave única por item e posição: o jogo exige ids distintos para os modificadores.
+            NamespacedKey key = new NamespacedKey(plugin, id + "_" + index++);
+            meta.addAttributeModifier(spec.attribute(),
+                    new AttributeModifier(key, spec.amount(), spec.operation(), spec.slot()));
+        }
+        enchantments.forEach((enchantment, level) -> meta.addEnchant(enchantment, level, true));
+        if (unbreakable) {
+            meta.setUnbreakable(true);
+        }
+        if (glint) {
+            meta.setEnchantmentGlintOverride(true);
+        }
+        meta.getPersistentDataContainer().set(plugin.idKey(), PersistentDataType.STRING, id);
         stack.setItemMeta(meta);
         return stack;
     }

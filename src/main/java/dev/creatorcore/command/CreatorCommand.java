@@ -49,8 +49,9 @@ public final class CreatorCommand implements TabExecutor {
             case "atualizar" -> plugin.updater().checkNow(sender);
             case "listar" -> list(sender);
             case "recarregar" -> {
-                int loaded = plugin.itemLoader().load();
-                send(sender, "<green>Itens recarregados: <white><p0></white>.", String.valueOf(loaded));
+                var loaded = plugin.itemLoader().load();
+                send(sender, "<green>Recarregado: <white><p0></white> item(ns) e <white><p1></white> receita(s).",
+                        String.valueOf(loaded.items()), String.valueOf(loaded.recipes()));
             }
             case "dar" -> give(sender, args);
             default -> send(sender, "<gray>Uso: <white>/cc [versao|atualizar|listar|recarregar|dar <id> [jogador] [quantidade]]");
@@ -111,7 +112,7 @@ public final class CreatorCommand implements TabExecutor {
             }
         }
         ItemDefinition definition = (ItemDefinition) found.get();
-        ItemStack stack = definition.create(plugin.idKey(), amount);
+        ItemStack stack = definition.create(plugin, amount);
         int total = stack.getAmount();
         int maxStack = stack.getMaxStackSize();
         // Divide em pilhas válidas; o que não couber no inventário cai aos pés do jogador.

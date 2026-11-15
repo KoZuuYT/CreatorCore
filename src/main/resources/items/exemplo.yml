@@ -1,8 +1,45 @@
 # Exemplo de definição de itens. Cada chave de nível superior é o id do item
 # (minúsculas, números e _). Use /cc recarregar para aplicar mudanças e /cc dar <id> para receber.
 # Textos usam MiniMessage: <gold>, <gray>, <bold>...
+#
+# Campos (todos opcionais, exceto material):
+#   material, nome, lore, inquebravel, brilho,
+#   encantamentos: {sharpness: 3}            (nome do encantamento: nível)
+#   atributos: lista de {atributo, valor, operacao, slot}
+#       operacao: add_number (padrão) | add_scalar | multiply_scalar_1
+#       slot: any (padrão) | mainhand | offhand | hand | head | chest | legs | feet | armor | body
+#       ATENÇÃO: se houver atributos, eles SUBSTITUEM os do item base (dano/velocidade da espada, armadura...).
+#       O jogador tem base 1 de dano e 4 de velocidade: uma espada de diamante é +7 de dano e -2.4 de velocidade.
+#   receita: tipo shaped (forma + ingredientes) ou shapeless (ingredientes: [lista]); quantidade opcional.
+#       Ingrediente: nome de material (EMERALD) ou cc:<id> para outro item do CreatorCore.
+
+diamante_polido:
+  material: DIAMOND
+  nome: "<aqua>Diamante Polido"
+  lore:
+    - "<gray>Ingrediente para criações melhores."
+  brilho: true
+  receita:
+    tipo: shapeless
+    ingredientes: [DIAMOND, DIAMOND]
+
 espada_teste:
   material: DIAMOND_SWORD
   nome: "<gold>Espada de Teste"
   lore:
     - "<gray>Primeira criação do CreatorCore."
+  inquebravel: true
+  encantamentos:
+    sharpness: 3
+  atributos:
+    - {atributo: attack_damage, valor: 9, operacao: add_number, slot: mainhand}
+    - {atributo: attack_speed, valor: -2.0, operacao: add_number, slot: mainhand}
+  receita:
+    tipo: shaped
+    forma:
+      - " P "
+      - " P "
+      - " S "
+    ingredientes:
+      P: cc:diamante_polido
+      S: STICK

@@ -41,7 +41,19 @@ espada_teste:
   nome: "<gold>Espada de Teste"     # MiniMessage
   lore:
     - "<gray>Primeira criação."
+  inquebravel: true
+  brilho: true
+  encantamentos:
+    sharpness: 3
+  atributos:                        # SUBSTITUEM os atributos do item base
+    - {atributo: attack_damage, valor: 9, operacao: add_number, slot: mainhand}
+  receita:
+    tipo: shaped                    # ou shapeless (ingredientes: [lista])
+    forma: [" P ", " P ", " S "]
+    ingredientes: {P: cc:diamante_polido, S: STICK}   # material ou cc:<id>
 ```
+
+O `exemplo.yml` gerado na primeira execução documenta todos os campos.
 
 `/cc recarregar` aplica mudanças; `/cc dar <id>` entrega o item. Entradas inválidas são ignoradas com aviso no console. Os itens carregam o id em `creatorcore:id` (PDC).
 
@@ -56,3 +68,4 @@ O plugin consulta a última release de `KoZuuYT/CreatorCore` a cada 30 min, baix
 | 0.1.0 | Esqueleto: classe principal, `plugin.yml`, `config.yml`, atualizador automático via GitHub, scripts de build/release |
 | 0.2.0 | Servidor de teste em `run/` e `scripts/server.ps1` (start/stop/RCON); atualizador validado em servidor real |
 | 0.3.0 | Base de registro de criações (`CreationRegistry`, tipos item/bloco/mob), itens definidos em YAML (`plugins/CreatorCore/items/*.yml`) e comandos `/cc listar`, `/cc recarregar`, `/cc dar <id> [jogador] [qtd]` |
+| 0.4.0 | Itens com atributos, encantamentos, `inquebravel` e `brilho`; receitas (com forma e sem forma) que aceitam outros itens do plugin como ingrediente (`cc:<id>`); receitas liberadas no livro de receitas |

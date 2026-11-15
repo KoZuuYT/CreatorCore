@@ -6,6 +6,9 @@ import dev.creatorcore.registry.CreationRegistry;
 import dev.creatorcore.update.AutoUpdater;
 import java.io.File;
 import org.bukkit.NamespacedKey;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 /** Classe principal do CreatorCore: hub de criações customizadas para o vanilla. */
@@ -23,10 +26,16 @@ public final class CreatorCorePlugin extends JavaPlugin {
 
         itemLoader = new ItemLoader(this, registry);
         itemLoader.saveDefaults();
-        int items = itemLoader.load();
+        var loaded = itemLoader.load();
 
         updater = new AutoUpdater(this);
         getServer().getPluginManager().registerEvents(updater, this);
+        getServer().getPluginManager().registerEvents(new Listener() {
+            @EventHandler
+            public void onJoin(PlayerJoinEvent event) {
+                itemLoader.discoverFor(event.getPlayer());
+            }
+        }, this);
 
         var command = getCommand("creatorcore");
         if (command != null) {
@@ -35,7 +44,15 @@ public final class CreatorCorePlugin extends JavaPlugin {
             command.setTabCompleter(executor);
         }
         updater.start();
-        getLogger().info("CreatorCore " + getPluginMeta().getVersion() + " ativado (" + items + " item(ns) carregado(s)).");
+        getLogger().info("CreatorCore " + getPluginMeta().getVersion() + " ativado (" + loaded.items()
+                + " item(ns), " + loaded.recipes() + " receita(s)).");
+    }
+
+    @Override
+    public void onDisable() {
+        if (itemLoader != null) {
+            itemLoader.unregisterRecipes();
+        }
     }
 
     public CreationRegistry registry() {
