@@ -1,7 +1,6 @@
 package dev.creatorcore.item;
 
 import dev.creatorcore.CreatorCorePlugin;
-import dev.creatorcore.registry.Creation;
 import dev.creatorcore.registry.CreationType;
 import java.util.List;
 import java.util.Map;
@@ -27,7 +26,7 @@ import org.bukkit.persistence.PersistentDataType;
  */
 public record ItemDefinition(String id, Material material, String name, List<String> lore,
                              List<AttributeSpec> attributes, Map<Enchantment, Integer> enchantments,
-                             boolean unbreakable, boolean glint, String model, RecipeSpec recipe) implements Creation {
+                             boolean unbreakable, boolean glint, String model, RecipeSpec recipe) implements ItemSource {
 
     private static final MiniMessage MM = MiniMessage.miniMessage();
 
@@ -36,6 +35,7 @@ public record ItemDefinition(String id, Material material, String name, List<Str
         return CreationType.ITEM;
     }
 
+    @Override
     public ItemStack create(CreatorCorePlugin plugin, int amount) {
         ItemStack stack = new ItemStack(material, Math.max(1, amount));
         ItemMeta meta = stack.getItemMeta();

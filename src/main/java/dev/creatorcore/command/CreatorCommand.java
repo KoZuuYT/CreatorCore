@@ -1,7 +1,7 @@
 package dev.creatorcore.command;
 
 import dev.creatorcore.CreatorCorePlugin;
-import dev.creatorcore.item.ItemDefinition;
+import dev.creatorcore.item.ItemSource;
 import dev.creatorcore.registry.Creation;
 import dev.creatorcore.registry.CreationType;
 import java.util.List;
@@ -59,8 +59,9 @@ public final class CreatorCommand implements TabExecutor {
             case "listar" -> list(sender);
             case "recarregar" -> {
                 var loaded = plugin.itemLoader().load();
-                send(sender, "<green>Recarregado: <white><p0></white> item(ns) e <white><p1></white> receita(s).",
-                        String.valueOf(loaded.items()), String.valueOf(loaded.recipes()));
+                send(sender, "<green>Recarregado: <white><p0></white> item(ns), <white><p1></white> bloco(s) e "
+                                + "<white><p2></white> receita(s).",
+                        String.valueOf(loaded.items()), String.valueOf(loaded.blocks()), String.valueOf(loaded.recipes()));
             }
             case "dar" -> give(sender, args);
             default -> send(sender, "<gray>Uso: <white>/cc [versao|pacote|atualizar|listar|recarregar|dar <id> [jogador] [quantidade]]");
@@ -77,12 +78,22 @@ public final class CreatorCommand implements TabExecutor {
 
     private void list(CommandSender sender) {
         var items = plugin.registry().all(CreationType.ITEM);
-        if (items.isEmpty()) {
-            send(sender, "<yellow>Nenhum item carregado. Veja a pasta plugins/CreatorCore/items/.");
+        var blocks = plugin.registry().all(CreationType.BLOCK);
+        if (items.isEmpty() && blocks.isEmpty()) {
+            send(sender, "<yellow>Nada carregado. Veja as pastas plugins/CreatorCore/items/ e blocks/.");
             return;
         }
         send(sender, "<gray>Itens (<white><p0></white>): <white><p1>", String.valueOf(items.size()),
                 String.join(", ", items.stream().map(Creation::id).toList()));
+        send(sender, "<gray>Blocos (<white><p0></white>): <white><p1>", String.valueOf(blocks.size()),
+                String.join(", ", blocks.stream().map(Creation::id).toList()));
+    }
+
+    /** Item ou bloco (como item) com o id dado. */
+    private java.util.Optional<ItemSource> findSource(String id) {
+        return plugin.registry().get(CreationType.ITEM, id)
+                .or(() -> plugin.registry().get(CreationType.BLOCK, id))
+                .map(creation -> (ItemSource) creation);
     }
 
     private void give(CommandSender sender, String[] args) {
@@ -90,9 +101,9 @@ public final class CreatorCommand implements TabExecutor {
             send(sender, "<gray>Uso: <white>/cc dar <id> [jogador] [quantidade]");
             return;
         }
-        var found = plugin.registry().get(CreationType.ITEM, args[1].toLowerCase(Locale.ROOT));
+        var found = findSource(args[1].toLowerCase(Locale.ROOT));
         if (found.isEmpty()) {
-            send(sender, "<red>Item <white><p0></white> não existe. Veja /cc listar.", args[1]);
+            send(sender, "<red>Item ou bloco <white><p0></white> não existe. Veja /cc listar.", args[1]);
             return;
         }
         Player target;
@@ -120,7 +131,7 @@ public final class CreatorCommand implements TabExecutor {
                 return;
             }
         }
-        ItemDefinition definition = (ItemDefinition) found.get();
+        ItemSource definition = found.get();
         ItemStack stack = definition.create(plugin, amount);
         int total = stack.getAmount();
         int maxStack = stack.getMaxStackSize();
@@ -149,7 +160,8 @@ public final class CreatorCommand implements TabExecutor {
         }
         String typed = args[args.length - 1].toLowerCase(Locale.ROOT);
         if (args.length == 2) {
-            return plugin.registry().all(CreationType.ITEM).stream().map(Creation::id)
+            return java.util.stream.Stream.of(CreationType.ITEM, CreationType.BLOCK)
+                    .flatMap(type -> plugin.registry().all(type).stream()).map(Creation::id)
                     .filter(id -> id.startsWith(typed)).toList();
         }
         if (args.length == 3) {

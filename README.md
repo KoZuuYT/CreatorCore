@@ -57,6 +57,26 @@ O `exemplo.yml` gerado na primeira execução documenta todos os campos.
 
 `/cc recarregar` aplica mudanças; `/cc dar <id>` entrega o item. Entradas inválidas são ignoradas com aviso no console. Os itens carregam o id em `creatorcore:id` (PDC).
 
+## Definindo blocos
+
+Em `plugins/CreatorCore/blocks/*.yml` (o `exemplo.yml` gerado documenta todos os campos). Cada bloco é um **estado do note block** com textura própria no resource pack; sem o pack ele aparece como note block vanilla.
+
+```yaml
+minerio_teste:
+  nome: "<aqua>Minério de Teste"
+  modelo: minerio_teste          # existe em src/main/resources/blocks.json e em tools/pack/build.py
+  dureza: 3.0
+  ferramenta: pickaxe            # none | pickaxe | axe | shovel | hoe
+  nivel: iron                    # nível mínimo para dropar
+  requer-ferramenta: true        # sem ela: quebra mais devagar e não dropa
+  drops:
+    - {item: "cc:diamante_polido", quantidade: "1-3"}
+```
+
+- **Novo bloco:** (1) adicione o modelo em `src/main/resources/blocks.json` com o próximo índice livre (nunca mude o índice de um modelo já usado em mundos), (2) desenhe a textura em `BLOCK_DRAW` de `tools/pack/build.py`, (3) crie a definição no YAML.
+- **Mineração:** o servidor calcula o tempo de quebra (dureza, ferramenta, Eficiência) e mostra as rachaduras; durante a quebra o jogador recebe Fadiga de Mineração invisível, para o cliente não quebrar sozinho (o braço balança mais devagar).
+- **Limitações:** ignora Pressa/Fadiga e água; pistões não movem estes blocos; som de madeira; no máximo ~800 blocos. Se algum bloco trocar de aparência perto de redstone/vizinhos, ative `block-updates.disable-noteblock-updates` no `paper-world-defaults.yml`.
+
 ## Resource pack
 
 - **Gerador:** `scripts\build-pack.ps1` (roda `tools/pack/build.py`, requer Python 3 + Pillow). Gera `resourcepack/` e `libs/CreatorCore-Pack.zip` (zip determinístico: o SHA-1 só muda se o conteúdo mudar). **Não edite `resourcepack/` à mão**: altere `MODELS` em `tools/pack/build.py`.
@@ -77,3 +97,4 @@ O plugin consulta a última release de `KoZuuYT/CreatorCore` a cada 30 min, baix
 | 0.3.0 | Base de registro de criações (`CreationRegistry`, tipos item/bloco/mob), itens definidos em YAML (`plugins/CreatorCore/items/*.yml`) e comandos `/cc listar`, `/cc recarregar`, `/cc dar <id> [jogador] [qtd]` |
 | 0.4.0 | Itens com atributos, encantamentos, `inquebravel` e `brilho`; receitas (com forma e sem forma) que aceitam outros itens do plugin como ingrediente (`cc:<id>`); receitas liberadas no livro de receitas |
 | 0.5.0 | Resource pack: gerador em `tools/pack`, `CreatorCore-Pack.zip` anexado à release, descoberta automática de URL/SHA-1 com cache, link manual no `config.yml`, campo `modelo:` nos itens e comando `/cc pacote` |
+| 0.6.0 | Blocos customizados (estados do note block): colocar, quebrar, drops, dureza e ferramenta/nível próprios, receitas, texturas no pack; `/cc dar` e `/cc listar` cobrem blocos |

@@ -1,6 +1,9 @@
 package dev.creatorcore.item;
 
 import dev.creatorcore.CreatorCorePlugin;
+import dev.creatorcore.block.BlockDefinition;
+import dev.creatorcore.block.DropSpec;
+import dev.creatorcore.block.ToolInfo;
 import dev.creatorcore.registry.CreationRegistry;
 import dev.creatorcore.registry.CreationType;
 import java.io.File;
@@ -26,6 +29,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.EquipmentSlotGroup;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.Recipe;
 import org.bukkit.inventory.RecipeChoice;
 import org.bukkit.inventory.ShapedRecipe;
@@ -38,7 +42,7 @@ import org.bukkit.inventory.ShapelessRecipe;
 public final class ItemLoader {
 
     /** Resultado de um carregamento. */
-    public record LoadResult(int items, int recipes) {
+    public record LoadResult(int items, int blocks, int recipes) {
     }
 
     private final CreatorCorePlugin plugin;
@@ -57,6 +61,9 @@ public final class ItemLoader {
         if (!dir.exists()) {
             plugin.saveResource("items/exemplo.yml", false);
         }
+        if (!new File(plugin.getDataFolder(), "blocks").exists()) {
+            plugin.saveResource("blocks/exemplo.yml", false);
+        }
     }
 
     /** Remove as receitas registradas por este plugin (ao desligar). */
@@ -72,14 +79,43 @@ public final class ItemLoader {
         player.discoverRecipes(recipeKeys);
     }
 
-    /** Recarrega itens e receitas. Entradas inválidas são ignoradas com aviso. */
+    /** Recarrega itens, blocos e receitas. Entradas inválidas são ignoradas com aviso. */
     public LoadResult load() {
         registry.clear(CreationType.ITEM);
+        registry.clear(CreationType.BLOCK);
         unregisterRecipes();
-        File dir = new File(plugin.getDataFolder(), "items");
+        int items = loadFolder("items", CreationType.ITEM);
+        int blocks = loadFolder("blocks", CreationType.BLOCK);
+        plugin.blocks().rebuild(registry);
+        // Receitas e drops só depois de tudo carregado, pois um ingrediente pode ser outro item/bloco (cc:<id>).
+        int recipes = 0;
+        for (CreationType type : new CreationType[] {CreationType.ITEM, CreationType.BLOCK}) {
+            for (var creation : registry.all(type)) {
+                if (creation instanceof ItemSource item && item.recipe() != null && registerRecipe(item)) {
+                    recipes++;
+                }
+            }
+        }
+        for (var creation : registry.all(CreationType.BLOCK)) {
+            BlockDefinition block = (BlockDefinition) creation;
+            for (DropSpec drop : block.drops()) {
+                if (resolveStack(drop.item(), 1) == null) {
+                    plugin.getLogger().warning("Bloco '" + block.id() + "': drop '" + drop.item() + "' não existe.");
+                }
+            }
+        }
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            discoverFor(online);
+        }
+        return new LoadResult(items, blocks, recipes);
+    }
+
+    /** Lê todos os .yml de uma pasta de definições. @return quantas criações foram registradas */
+    private int loadFolder(String folder, CreationType type) {
+        File dir = new File(plugin.getDataFolder(), folder);
         File[] files = dir.listFiles((d, name) -> name.toLowerCase(Locale.ROOT).endsWith(".yml"));
         if (files == null) {
-            return new LoadResult(0, 0);
+            return 0;
         }
         Arrays.sort(files, Comparator.comparing(File::getName));
         int loaded = 0;
@@ -92,36 +128,79 @@ public final class ItemLoader {
                     continue;
                 }
                 try {
-                    registry.register(parse(id, section));
+                    if (type == CreationType.BLOCK && registry.get(CreationType.ITEM, id).isPresent()) {
+                        throw new IllegalArgumentException("id já usado por um item");
+                    }
+                    registry.register(type == CreationType.ITEM ? parse(id, section) : parseBlock(id, section));
                     loaded++;
                 } catch (IllegalArgumentException e) {
                     warn(file, id, e.getMessage());
                 }
             }
         }
-        // Receitas só depois de todos os itens, pois um ingrediente pode ser outro item (cc:<id>).
-        int recipes = 0;
-        for (var creation : registry.all(CreationType.ITEM)) {
-            ItemDefinition item = (ItemDefinition) creation;
-            if (item.recipe() == null) {
-                continue;
+        return loaded;
+    }
+
+    private boolean registerRecipe(ItemSource item) {
+        try {
+            Recipe recipe = buildRecipe(item);
+            if (!Bukkit.addRecipe(recipe)) {
+                throw new IllegalArgumentException("o servidor recusou a receita");
             }
-            try {
-                Recipe recipe = buildRecipe(item);
-                NamespacedKey key = recipeKey(item);
-                if (!Bukkit.addRecipe(recipe)) {
-                    throw new IllegalArgumentException("o servidor recusou a receita");
-                }
-                recipeKeys.add(key);
-                recipes++;
-            } catch (IllegalArgumentException e) {
-                plugin.getLogger().warning("Receita de '" + item.id() + "' ignorada (" + e.getMessage() + ").");
+            recipeKeys.add(recipeKey(item));
+            return true;
+        } catch (IllegalArgumentException e) {
+            plugin.getLogger().warning("Receita de '" + item.id() + "' ignorada (" + e.getMessage() + ").");
+            return false;
+        }
+    }
+
+    // ── Blocos ──────────────────────────────────────────────────
+
+    private BlockDefinition parseBlock(String id, ConfigurationSection s) {
+        String model = s.getString("modelo", id);
+        Integer state = plugin.blocks().states().state(model);
+        if (state == null) {
+            throw new IllegalArgumentException("modelo '" + model + "' não existe em blocks.json (veja tools/pack/build.py)");
+        }
+        double hardness = s.getDouble("dureza", 1.0);
+        ToolInfo.Type tool = ToolInfo.Type.parse(s.getString("ferramenta", "none"));
+        if (tool == null) {
+            throw new IllegalArgumentException("ferramenta inválida '" + s.getString("ferramenta") + "'");
+        }
+        int tier = ToolInfo.parseTier(s.getString("nivel", "wood"));
+        if (tier < 0) {
+            throw new IllegalArgumentException("nivel inválido '" + s.getString("nivel") + "'");
+        }
+        boolean requiresTool = s.getBoolean("requer-ferramenta", false);
+        if (requiresTool && tool == ToolInfo.Type.NONE) {
+            throw new IllegalArgumentException("requer-ferramenta exige o campo ferramenta");
+        }
+        List<DropSpec> drops = new ArrayList<>();
+        for (Map<?, ?> raw : s.getMapList("drops")) {
+            drops.add(parseDrop(raw));
+        }
+        return new BlockDefinition(id, s.getString("nome", ""), List.copyOf(s.getStringList("lore")), model, state,
+                hardness, tool, tier, requiresTool, List.copyOf(drops), parseRecipe(s));
+    }
+
+    private static DropSpec parseDrop(Map<?, ?> raw) {
+        Object item = raw.get("item");
+        if (item == null || String.valueOf(item).isBlank()) {
+            throw new IllegalArgumentException("drop sem 'item'");
+        }
+        String amount = raw.get("quantidade") == null ? "1" : String.valueOf(raw.get("quantidade")).strip();
+        try {
+            int dash = amount.indexOf('-', 1);
+            int min = Integer.parseInt(dash < 0 ? amount : amount.substring(0, dash).strip());
+            int max = dash < 0 ? min : Integer.parseInt(amount.substring(dash + 1).strip());
+            if (min < 0 || max < min || max > 64) {
+                throw new NumberFormatException();
             }
+            return new DropSpec(String.valueOf(item).strip(), min, max);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("quantidade de drop inválida '" + amount + "' (use 2 ou 1-3, até 64)");
         }
-        for (Player online : Bukkit.getOnlinePlayers()) {
-            discoverFor(online);
-        }
-        return new LoadResult(loaded, recipes);
     }
 
     // ── Itens ───────────────────────────────────────────────────
@@ -239,11 +318,12 @@ public final class ItemLoader {
         }
     }
 
-    private NamespacedKey recipeKey(ItemDefinition item) {
-        return new NamespacedKey(plugin, "receita_" + item.id());
+    private NamespacedKey recipeKey(ItemSource item) {
+        String prefix = item.type() == CreationType.BLOCK ? "receita_bloco_" : "receita_";
+        return new NamespacedKey(plugin, prefix + item.id());
     }
 
-    private Recipe buildRecipe(ItemDefinition item) {
+    private Recipe buildRecipe(ItemSource item) {
         RecipeSpec spec = item.recipe();
         var result = item.create(plugin, spec.amount());
         NamespacedKey key = recipeKey(item);
@@ -279,24 +359,37 @@ public final class ItemLoader {
         return recipe;
     }
 
-    /** Material vanilla ({@code EMERALD}) ou outro item do plugin ({@code cc:<id>}). */
+    /** Material vanilla ({@code EMERALD}) ou outro item/bloco do plugin ({@code cc:<id>}). */
     private RecipeChoice choice(String ingredient) {
-        if (ingredient.regionMatches(true, 0, "cc:", 0, 3)) {
-            String id = ingredient.substring(3).toLowerCase(Locale.ROOT);
-            var found = registry.get(CreationType.ITEM, id);
-            if (found.isEmpty()) {
-                throw new IllegalArgumentException("ingrediente 'cc:" + id + "' não existe");
-            }
-            return RecipeChoice.exactChoice(((ItemDefinition) found.get()).create(plugin, 1));
-        }
-        Material material = Material.matchMaterial(ingredient);
-        if (material == null || !material.isItem() || material.isAir()) {
+        ItemStack stack = resolveStack(ingredient, 1);
+        if (stack == null) {
             throw new IllegalArgumentException("ingrediente inválido '" + ingredient + "'");
         }
-        return new RecipeChoice.MaterialChoice(material);
+        return ingredient.regionMatches(true, 0, "cc:", 0, 3)
+                ? RecipeChoice.exactChoice(stack)
+                : new RecipeChoice.MaterialChoice(stack.getType());
+    }
+
+    /**
+     * Cria a pilha de um material vanilla ({@code DIAMOND}) ou de um item/bloco do plugin ({@code cc:<id>}).
+     *
+     * @return a pilha, ou {@code null} se não existir
+     */
+    public ItemStack resolveStack(String spec, int amount) {
+        if (spec.regionMatches(true, 0, "cc:", 0, 3)) {
+            String id = spec.substring(3).toLowerCase(Locale.ROOT);
+            var found = registry.get(CreationType.ITEM, id).or(() -> registry.get(CreationType.BLOCK, id));
+            return found.map(creation -> ((ItemSource) creation).create(plugin, amount)).orElse(null);
+        }
+        Material material = Material.matchMaterial(spec);
+        if (material == null || !material.isItem() || material.isAir()) {
+            return null;
+        }
+        return new ItemStack(material, Math.max(1, amount));
     }
 
     private void warn(File file, String id, String reason) {
-        plugin.getLogger().warning("items/" + file.getName() + ": '" + id + "' ignorado (" + reason + ").");
+        plugin.getLogger().warning(file.getParentFile().getName() + "/" + file.getName() + ": '" + id
+                + "' ignorado (" + reason + ").");
     }
 }

@@ -1,0 +1,7 @@
+{
+  "_comentario": "Registro dos modelos de bloco: nome do modelo -> índice do estado do note block (1 a 799; o 0 é o note block vanilla e fica reservado). Lido pelo plugin e por tools/pack/build.py. NUNCA mude o índice de um modelo já usado em mundos: os blocos colocados seriam trocados. Novos modelos usam o próximo índice livre.",
+  "modelos": {
+    "minerio_teste": 1,
+    "bloco_polido": 2
+  }
+}

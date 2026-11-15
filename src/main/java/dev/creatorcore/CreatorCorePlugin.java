@@ -1,5 +1,8 @@
 package dev.creatorcore;
 
+import dev.creatorcore.block.BlockListener;
+import dev.creatorcore.block.CustomBlocks;
+import dev.creatorcore.block.MiningManager;
 import dev.creatorcore.command.CreatorCommand;
 import dev.creatorcore.item.ItemLoader;
 import dev.creatorcore.pack.ResourcePackManager;
@@ -19,22 +22,31 @@ public final class CreatorCorePlugin extends JavaPlugin {
     private AutoUpdater updater;
     private ResourcePackManager resourcePack;
     private ItemLoader itemLoader;
+    private CustomBlocks blocks;
+    private MiningManager mining;
     private NamespacedKey idKey;
+    private NamespacedKey blockKey;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
         idKey = new NamespacedKey(this, "id");
+        blockKey = new NamespacedKey(this, "bloco");
 
+        blocks = new CustomBlocks(this);
         itemLoader = new ItemLoader(this, registry);
         itemLoader.saveDefaults();
         var loaded = itemLoader.load();
 
+        var plugins = getServer().getPluginManager();
         updater = new AutoUpdater(this);
-        getServer().getPluginManager().registerEvents(updater, this);
+        plugins.registerEvents(updater, this);
         resourcePack = new ResourcePackManager(this);
-        getServer().getPluginManager().registerEvents(resourcePack, this);
-        getServer().getPluginManager().registerEvents(new Listener() {
+        plugins.registerEvents(resourcePack, this);
+        mining = new MiningManager(this, blocks);
+        plugins.registerEvents(mining, this);
+        plugins.registerEvents(new BlockListener(this, blocks, mining), this);
+        plugins.registerEvents(new Listener() {
             @EventHandler
             public void onJoin(PlayerJoinEvent event) {
                 itemLoader.discoverFor(event.getPlayer());
@@ -50,11 +62,14 @@ public final class CreatorCorePlugin extends JavaPlugin {
         updater.start();
         resourcePack.start();
         getLogger().info("CreatorCore " + getPluginMeta().getVersion() + " ativado (" + loaded.items()
-                + " item(ns), " + loaded.recipes() + " receita(s)).");
+                + " item(ns), " + loaded.blocks() + " bloco(s), " + loaded.recipes() + " receita(s)).");
     }
 
     @Override
     public void onDisable() {
+        if (mining != null) {
+            mining.stopAll();
+        }
         if (itemLoader != null) {
             itemLoader.unregisterRecipes();
         }
@@ -76,9 +91,18 @@ public final class CreatorCorePlugin extends JavaPlugin {
         return itemLoader;
     }
 
-    /** Chave {@code creatorcore:id} gravada nos itens criados pelo plugin. */
+    public CustomBlocks blocks() {
+        return blocks;
+    }
+
+    /** Chave {@code creatorcore:id} gravada nos itens (e itens de bloco) criados pelo plugin. */
     public NamespacedKey idKey() {
         return idKey;
+    }
+
+    /** Chave {@code creatorcore:bloco} gravada nos itens que colocam um bloco customizado. */
+    public NamespacedKey blockKey() {
+        return blockKey;
     }
 
     /** Arquivo .jar deste plugin (usado pelo atualizador para substituí-lo). */
