@@ -69,6 +69,9 @@ public final class ItemLoader {
         if (!new File(plugin.getDataFolder(), "blocks").exists()) {
             plugin.saveResource("blocks/exemplo.yml", false);
         }
+        if (!new File(plugin.getDataFolder(), "models").exists()) {
+            plugin.saveResource("models/golem_teste.bbmodel", false);
+        }
         if (!new File(plugin.getDataFolder(), "mobs").exists()) {
             plugin.saveResource("mobs/exemplo.yml", false);
         }
@@ -93,6 +96,7 @@ public final class ItemLoader {
         registry.clear(CreationType.BLOCK);
         registry.clear(CreationType.MOB);
         unregisterRecipes();
+        plugin.models().load(); // antes de tudo: os itens consultam os modelos importados
         int items = loadFolder("items", CreationType.ITEM);
         int blocks = loadFolder("blocks", CreationType.BLOCK);
         int mobs = loadFolder("mobs", CreationType.MOB);
@@ -119,6 +123,10 @@ public final class ItemLoader {
         }
         for (var creation : registry.all(CreationType.MOB)) {
             MobDefinition mob = (MobDefinition) creation;
+            if (mob.model() != null && !plugin.models().has(mob.model())) {
+                plugin.getLogger().warning("Mob '" + mob.id() + "': modelo '" + mob.model()
+                        + "' não encontrado em models/ (o mob usa o visual do mob base).");
+            }
             for (DropSpec drop : mob.drops()) {
                 if (resolveStack(drop.item(), 1) == null) {
                     plugin.getLogger().warning("Mob '" + mob.id() + "': drop '" + drop.item() + "' não existe.");
@@ -292,7 +300,8 @@ public final class ItemLoader {
         }
         return new MobDefinition(id, entity, s.getString("nome", ""), Map.copyOf(attributes), Map.copyOf(equipment),
                 List.copyOf(drops), s.getBoolean("drops-vanilla", false), s.getInt("xp", -1),
-                s.getBoolean("brilho", false), s.getBoolean("silencioso", false), parseSpawn(s));
+                s.getBoolean("brilho", false), s.getBoolean("silencioso", false), parseSpawn(s),
+                parseModel(s), s.getDouble("escala-modelo", 1.0), s.getDouble("deslocamento-y", 0.0));
     }
 
     private static SpawnSpec parseSpawn(ConfigurationSection s) {

@@ -8,6 +8,13 @@ updater:
   restart-when-empty: false
 
 resourcepack:
+  # Modelos do Blockbench (plugins/CreatorCore/models/*.bbmodel): com modelos, o plugin monta um pack
+  # próprio (pack da release + modelos) e o serve por HTTP embutido. address = IP ou domínio que os
+  # jogadores alcançam (localhost só serve para teste local); abra/redirecione a porta no firewall.
+  host:
+    enabled: true
+    address: localhost
+    port: 25630
   # Por padrão o pack é descoberto sozinho pela release mais recente do GitHub (updater.repository),
   # com cache local em pack-cache.properties. Sem internet, vale o último pack em cache.
   enabled: true

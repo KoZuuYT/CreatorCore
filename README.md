@@ -102,6 +102,14 @@ zumbi_forte:
 
 `/cc invocar <id> [quantidade]` cria o mob onde você olha. Os mobs levam `creatorcore:mob` (PDC), são persistentes (não somem por distância) e substituem os drops vanilla pelos definidos (`drops-vanilla: true` mantém os dois).
 
+## Modelos do Blockbench
+
+Coloque projetos salvos **com as texturas embutidas** em `plugins/CreatorCore/models/<id>.bbmodel` e use `/cc recarregar`. O plugin converte para modelos do jogo, monta um pack próprio (pack da release + seus modelos) e o serve por HTTP embutido (`resourcepack.host.*` no `config.yml`; `address` deve ser um IP/domínio que os jogadores alcancem e a porta `25630` precisa estar liberada — `localhost` só serve para teste local).
+
+- **Itens:** `modelo: <id>` no item usa o modelo importado (o `material` é só o visual de quem não carregar o pack).
+- **Mobs:** `modelo: <id>` (+ `escala-modelo`, `deslocamento-y`) deixa o mob base invisível e um modelo acompanha seus movimentos (sem animações; equipamento fica oculto).
+- **Suportado:** cubos, UV por face, texturas PNG embutidas, rotação de um eixo em passos de 22,5° até 45° (do cubo ou do grupo), `display`. **Não suportado** (ignorado com aviso): malhas, rotação em vários eixos ou ângulos livres, animações. Exemplo gerado: `golem_teste.bbmodel` (`tools/models/build_example.py`).
+
 ## Resource pack
 
 - **Gerador:** `scripts\build-pack.ps1` (roda `tools/pack/build.py`, requer Python 3 + Pillow). Gera `resourcepack/` e `libs/CreatorCore-Pack.zip` (zip determinístico: o SHA-1 só muda se o conteúdo mudar). **Não edite `resourcepack/` à mão**: altere `MODELS` em `tools/pack/build.py`.
@@ -127,3 +135,4 @@ O plugin consulta a última release de `KoZuuYT/CreatorCore` a cada 30 min, baix
 | 0.8.0 | Spawn natural de mobs customizados (chance, mundo, bioma e limite por mundo) |
 | 0.9.0 | Receitas de cozimento (fornalha, alto-forno, defumador, fogueira) para itens e blocos, com `cc:<id>` como entrada |
 | 0.10.0 | Habilidades de itens: gatilhos (clique, Shift+clique, bater) com recarga e ações (efeito, cura, dano, raio, projétil, impulso, som, comando) |
+| 0.11.0 | Importação de modelos do Blockbench (`.bbmodel`) para itens e mobs: pack próprio montado e servido pelo plugin (HTTP embutido) |

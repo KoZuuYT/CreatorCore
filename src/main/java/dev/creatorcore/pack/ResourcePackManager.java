@@ -45,13 +45,17 @@ public final class ResourcePackManager implements Listener {
     }
 
     public String url() {
-        return manual() ? plugin.getConfig().getString("resourcepack.url", "").strip() : resolver.url();
+        if (manual()) {
+            return plugin.getConfig().getString("resourcepack.url", "").strip();
+        }
+        return plugin.packHost().active() ? plugin.packHost().url() : resolver.url();
     }
 
     public String sha1() {
-        return manual()
-                ? plugin.getConfig().getString("resourcepack.sha1", "").strip().toLowerCase(Locale.ROOT)
-                : resolver.sha1();
+        if (manual()) {
+            return plugin.getConfig().getString("resourcepack.sha1", "").strip().toLowerCase(Locale.ROOT);
+        }
+        return plugin.packHost().active() ? plugin.packHost().sha1() : resolver.sha1();
     }
 
     public boolean isConfigured() {

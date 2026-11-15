@@ -59,6 +59,8 @@ public final class CreatorCommand implements TabExecutor {
             case "listar" -> list(sender);
             case "recarregar" -> {
                 var loaded = plugin.itemLoader().load();
+                plugin.packHost().rebuildAndRefresh();
+                plugin.modelMobs().refreshAll();
                 send(sender, "<green>Recarregado: <white><p0></white> item(ns), <white><p1></white> bloco(s), "
                                 + "<white><p2></white> mob(s) e <white><p3></white> receita(s).",
                         String.valueOf(loaded.items()), String.valueOf(loaded.blocks()), String.valueOf(loaded.mobs()),

@@ -13,6 +13,9 @@
 #   drops-vanilla: true mantém também os drops normais da espécie (padrão false)
 #   xp: experiência ao morrer (padrão: a vanilla)
 #   brilho: true = contorno brilhante; silencioso: true = sem sons
+#   modelo: (opcional) modelo do Blockbench em models/<id>.bbmodel. O mob base fica invisível e um modelo
+#       acompanha seus movimentos; escala-modelo (padrão 1.0) e deslocamento-y (padrão 0) ajustam o tamanho e a altura.
+#       Equipamento fica oculto com modelo. Sem o pack ou sem o arquivo, o mob usa o visual do mob base.
 #   spawn: (opcional) spawn natural. Quando o jogo faria nascer o mob de "tipo", ele é trocado por este.
 #       chance: de 0 a 1 (padrão 0.1) | limite: máximo vivo por mundo (padrão 10)
 #       mundos: [world] e biomas: [plains, forest] (omitidos = qualquer)
@@ -37,3 +40,12 @@ zumbi_forte:
     chance: 0.05
     limite: 5
     mundos: [world]
+
+golem_teste:
+  tipo: ZOMBIE
+  nome: "<gold>Golem de Teste"
+  modelo: golem_teste
+  escala-modelo: 1.0
+  atributos:
+    max_health: 40
+    movement_speed: 0.2

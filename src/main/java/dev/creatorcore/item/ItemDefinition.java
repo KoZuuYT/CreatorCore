@@ -65,6 +65,10 @@ public record ItemDefinition(String id, Material material, String name, List<Str
             CustomModelDataComponent data = meta.getCustomModelDataComponent();
             data.setStrings(List.of(model));
             meta.setCustomModelDataComponent(data);
+            if (plugin.models().has(model)) {
+                // Modelo importado do Blockbench (models/<id>.bbmodel): o pack próprio o define como creatorcore:<id>.
+                meta.setItemModel(new org.bukkit.NamespacedKey(dev.creatorcore.model.ModelManager.NAMESPACE, model));
+            }
         }
         meta.getPersistentDataContainer().set(plugin.idKey(), PersistentDataType.STRING, id);
         stack.setItemMeta(meta);

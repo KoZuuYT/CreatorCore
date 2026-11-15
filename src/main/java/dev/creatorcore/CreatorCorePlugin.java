@@ -27,6 +27,9 @@ public final class CreatorCorePlugin extends JavaPlugin {
     private NamespacedKey idKey;
     private NamespacedKey blockKey;
     private NamespacedKey mobKey;
+    private dev.creatorcore.model.ModelManager models;
+    private dev.creatorcore.pack.PackHost packHost;
+    private dev.creatorcore.model.ModelMobs modelMobs;
 
     @Override
     public void onEnable() {
@@ -35,6 +38,9 @@ public final class CreatorCorePlugin extends JavaPlugin {
         blockKey = new NamespacedKey(this, "bloco");
         mobKey = new NamespacedKey(this, "mob");
 
+        models = new dev.creatorcore.model.ModelManager(this);
+        packHost = new dev.creatorcore.pack.PackHost(this);
+        modelMobs = new dev.creatorcore.model.ModelMobs(this);
         blocks = new CustomBlocks(this);
         itemLoader = new ItemLoader(this, registry);
         itemLoader.saveDefaults();
@@ -50,6 +56,9 @@ public final class CreatorCorePlugin extends JavaPlugin {
         plugins.registerEvents(new BlockListener(this, blocks, mining), this);
         plugins.registerEvents(new dev.creatorcore.mob.MobListener(this), this);
         plugins.registerEvents(new dev.creatorcore.item.AbilityListener(this), this);
+        plugins.registerEvents(modelMobs, this);
+        packHost.rebuild();
+        modelMobs.start();
         plugins.registerEvents(new Listener() {
             @EventHandler
             public void onJoin(PlayerJoinEvent event) {
@@ -74,6 +83,12 @@ public final class CreatorCorePlugin extends JavaPlugin {
         if (mining != null) {
             mining.stopAll();
         }
+        if (modelMobs != null) {
+            modelMobs.stop();
+        }
+        if (packHost != null) {
+            packHost.stopServer();
+        }
         if (itemLoader != null) {
             itemLoader.unregisterRecipes();
         }
@@ -93,6 +108,18 @@ public final class CreatorCorePlugin extends JavaPlugin {
 
     public ItemLoader itemLoader() {
         return itemLoader;
+    }
+
+    public dev.creatorcore.model.ModelManager models() {
+        return models;
+    }
+
+    public dev.creatorcore.pack.PackHost packHost() {
+        return packHost;
+    }
+
+    public dev.creatorcore.model.ModelMobs modelMobs() {
+        return modelMobs;
     }
 
     public CustomBlocks blocks() {

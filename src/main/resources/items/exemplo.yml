@@ -95,3 +95,9 @@ espada_teste:
     ingredientes:
       P: cc:diamante_polido
       S: STICK
+
+golem_miniatura:
+  material: AMETHYST_SHARD
+  nome: "<gold>Golem em Miniatura"
+  lore: ["<gray>Item com modelo importado do Blockbench."]
+  modelo: golem_teste

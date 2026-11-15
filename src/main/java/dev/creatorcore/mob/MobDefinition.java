@@ -28,10 +28,12 @@ import org.bukkit.persistence.PersistentDataType;
  * @param keepVanillaDrops mantém também os drops vanilla da espécie
  * @param xp         experiência ao morrer (-1 = a vanilla)
  * @param spawn      spawn natural (null = só por /cc invocar)
+ * @param model      modelo importado do Blockbench (models/&lt;id&gt;.bbmodel); null = visual do mob base
  */
 public record MobDefinition(String id, EntityType entity, String name, Map<Attribute, Double> attributes,
                             Map<EquipmentSlot, String> equipment, List<DropSpec> drops, boolean keepVanillaDrops,
-                            int xp, boolean glowing, boolean silent, SpawnSpec spawn) implements Creation {
+                            int xp, boolean glowing, boolean silent, SpawnSpec spawn,
+                            String model, double modelScale, double modelOffsetY) implements Creation {
 
     private static final MiniMessage MM = MiniMessage.miniMessage();
 
@@ -42,7 +44,7 @@ public record MobDefinition(String id, EntityType entity, String name, Map<Attri
 
     /** Invoca o mob em {@code where}. */
     public LivingEntity spawn(CreatorCorePlugin plugin, Location where) {
-        return (LivingEntity) where.getWorld().spawnEntity(where, entity, CreatureSpawnEvent.SpawnReason.CUSTOM, spawned -> {
+        LivingEntity result = (LivingEntity) where.getWorld().spawnEntity(where, entity, CreatureSpawnEvent.SpawnReason.CUSTOM, spawned -> {
             LivingEntity mob = (LivingEntity) spawned;
             mob.getPersistentDataContainer().set(plugin.mobKey(), PersistentDataType.STRING, id);
             if (name != null && !name.isBlank()) {
@@ -73,5 +75,7 @@ public record MobDefinition(String id, EntityType entity, String name, Map<Attri
                 m.setPersistent(true);
             }
         });
+        plugin.modelMobs().attach(result, this);
+        return result;
     }
 }

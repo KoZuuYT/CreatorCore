@@ -132,7 +132,7 @@ public final class PackResolver {
                 plugin.getLogger().warning("URL do resource pack inesperada; ignorada por segurança.");
                 return;
             }
-            if (id == assetId && isReady()) {
+            if (id == assetId && isReady() && plugin.packHost().baseFile().isFile()) {
                 return;
             }
             long size = asset.has("size") ? asset.get("size").getAsLong() : 0;
@@ -160,6 +160,8 @@ public final class PackResolver {
             }
             String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-1").digest(bytes));
             boolean changed = !hash.equals(sha1);
+            Files.createDirectories(plugin.packHost().baseFile().toPath().getParent());
+            Files.write(plugin.packHost().baseFile().toPath(), bytes); // base para o pack com modelos importados
             assetId = id;
             sha1 = hash;
             url = downloadUrl;
@@ -167,7 +169,12 @@ public final class PackResolver {
             plugin.getLogger().info("Resource pack configurado automaticamente: " + downloadUrl + " (sha1 " + hash + ")");
             // Quem entrou antes da descoberta recebeu o pacote do cache (versão antiga): reenvia só se mudou.
             if (changed) {
-                Bukkit.getScheduler().runTask(plugin, () -> plugin.resourcePack().refreshOnline());
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    plugin.packHost().rebuildAndRefresh(); // inativo (sem modelos) = nada muda
+                    if (!plugin.packHost().active()) {
+                        plugin.resourcePack().refreshOnline();
+                    }
+                });
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
