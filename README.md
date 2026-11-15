@@ -31,6 +31,8 @@ Hub de criações customizadas para o Minecraft vanilla (itens, mobs, blocos e m
 .\scripts\server.ps1 stop             # para por RCON
 ```
 
+**Aplicativo:** `tools\CreatorCoreServer.exe` liga e desliga o servidor de teste (status, log, comandos por RCON, copia o jar mais novo de `libs\` para `run\plugins\`). Para recompilar: `tools\build-launcher.ps1` (usa o `csc.exe` do Windows).
+
 ## Definindo itens
 
 Em `plugins/CreatorCore/items/*.yml`, cada chave de nível superior é o id do item (minúsculas, números e `_`):
@@ -77,6 +79,23 @@ minerio_teste:
 - **Mineração:** o servidor calcula o tempo de quebra (dureza, ferramenta, Eficiência) e mostra as rachaduras; durante a quebra o jogador recebe Fadiga de Mineração invisível, para o cliente não quebrar sozinho (o braço balança mais devagar).
 - **Limitações:** ignora Pressa/Fadiga e água; pistões não movem estes blocos; som de madeira; no máximo ~800 blocos. Se algum bloco trocar de aparência perto de redstone/vizinhos, ative `block-updates.disable-noteblock-updates` no `paper-world-defaults.yml`.
 
+## Definindo mobs
+
+Em `plugins/CreatorCore/mobs/*.yml` (o `exemplo.yml` gerado documenta tudo). Cada mob é um mob vanilla (`tipo`) com nome, atributos, equipamento e drops próprios; o visual é o do mob base.
+
+```yaml
+zumbi_forte:
+  tipo: ZOMBIE
+  nome: "<red>Zumbi Forte"
+  atributos: {max_health: 60, movement_speed: 0.28, attack_damage: 6}
+  equipamento: {mainhand: DIAMOND_SWORD, head: IRON_HELMET}
+  drops:
+    - {item: "cc:diamante_polido", quantidade: "1-2"}
+  xp: 30
+```
+
+`/cc invocar <id> [quantidade]` cria o mob onde você olha. Os mobs levam `creatorcore:mob` (PDC), são persistentes (não somem por distância) e substituem os drops vanilla pelos definidos (`drops-vanilla: true` mantém os dois).
+
 ## Resource pack
 
 - **Gerador:** `scripts\build-pack.ps1` (roda `tools/pack/build.py`, requer Python 3 + Pillow). Gera `resourcepack/` e `libs/CreatorCore-Pack.zip` (zip determinístico: o SHA-1 só muda se o conteúdo mudar). **Não edite `resourcepack/` à mão**: altere `MODELS` em `tools/pack/build.py`.
@@ -98,3 +117,4 @@ O plugin consulta a última release de `KoZuuYT/CreatorCore` a cada 30 min, baix
 | 0.4.0 | Itens com atributos, encantamentos, `inquebravel` e `brilho`; receitas (com forma e sem forma) que aceitam outros itens do plugin como ingrediente (`cc:<id>`); receitas liberadas no livro de receitas |
 | 0.5.0 | Resource pack: gerador em `tools/pack`, `CreatorCore-Pack.zip` anexado à release, descoberta automática de URL/SHA-1 com cache, link manual no `config.yml`, campo `modelo:` nos itens e comando `/cc pacote` |
 | 0.6.0 | Blocos customizados (estados do note block): colocar, quebrar, drops, dureza e ferramenta/nível próprios, receitas, texturas no pack; `/cc dar` e `/cc listar` cobrem blocos |
+| 0.7.0 | Mobs customizados (`mobs/*.yml`): mob vanilla de base com nome, atributos, equipamento, drops e XP próprios; comando `/cc invocar`; app `CreatorCoreServer.exe` para ligar/desligar o servidor de teste |

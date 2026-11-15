@@ -1,0 +1,32 @@
+# Exemplo de definição de mobs. Cada chave de nível superior é o id do mob
+# (minúsculas, números e _). Use /cc recarregar para aplicar e /cc invocar <id> para criá-lo.
+# Textos usam MiniMessage: <gold>, <gray>, <bold>...
+#
+# Campos:
+#   tipo: mob vanilla de base (obrigatório): ZOMBIE, SKELETON, SPIDER, COW...
+#   nome: nome exibido acima do mob (opcional)
+#   atributos: valores base, ex.: max_health, movement_speed, attack_damage, follow_range, scale,
+#       armor, knockback_resistance (nem todo mob tem todos os atributos)
+#   equipamento: mainhand, offhand, head, chest, legs, feet = material (DIAMOND_SWORD) ou cc:<id>
+#       (o equipamento nunca dropa; use drops)
+#   drops: lista de {item, quantidade}; item = material ou cc:<id>; quantidade = 2 ou 1-3
+#   drops-vanilla: true mantém também os drops normais da espécie (padrão false)
+#   xp: experiência ao morrer (padrão: a vanilla)
+#   brilho: true = contorno brilhante; silencioso: true = sem sons
+#
+# O mob não some por distância (persistente). Visual = o do mob vanilla (sem textura própria).
+
+zumbi_forte:
+  tipo: ZOMBIE
+  nome: "<red>Zumbi Forte"
+  atributos:
+    max_health: 60
+    movement_speed: 0.28
+    attack_damage: 6
+  equipamento:
+    mainhand: DIAMOND_SWORD
+    head: IRON_HELMET
+  drops:
+    - {item: "cc:diamante_polido", quantidade: "1-2"}
+  xp: 30
+  brilho: true

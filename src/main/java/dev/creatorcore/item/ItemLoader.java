@@ -4,7 +4,11 @@ import dev.creatorcore.CreatorCorePlugin;
 import dev.creatorcore.block.BlockDefinition;
 import dev.creatorcore.block.DropSpec;
 import dev.creatorcore.block.ToolInfo;
+import dev.creatorcore.mob.MobDefinition;
 import dev.creatorcore.registry.CreationRegistry;
+import org.bukkit.entity.EntityType;
+import org.bukkit.entity.LivingEntity;
+import org.bukkit.inventory.EquipmentSlot;
 import dev.creatorcore.registry.CreationType;
 import java.io.File;
 import java.util.ArrayList;
@@ -42,7 +46,7 @@ import org.bukkit.inventory.ShapelessRecipe;
 public final class ItemLoader {
 
     /** Resultado de um carregamento. */
-    public record LoadResult(int items, int blocks, int recipes) {
+    public record LoadResult(int items, int blocks, int mobs, int recipes) {
     }
 
     private final CreatorCorePlugin plugin;
@@ -64,6 +68,9 @@ public final class ItemLoader {
         if (!new File(plugin.getDataFolder(), "blocks").exists()) {
             plugin.saveResource("blocks/exemplo.yml", false);
         }
+        if (!new File(plugin.getDataFolder(), "mobs").exists()) {
+            plugin.saveResource("mobs/exemplo.yml", false);
+        }
     }
 
     /** Remove as receitas registradas por este plugin (ao desligar). */
@@ -83,9 +90,11 @@ public final class ItemLoader {
     public LoadResult load() {
         registry.clear(CreationType.ITEM);
         registry.clear(CreationType.BLOCK);
+        registry.clear(CreationType.MOB);
         unregisterRecipes();
         int items = loadFolder("items", CreationType.ITEM);
         int blocks = loadFolder("blocks", CreationType.BLOCK);
+        int mobs = loadFolder("mobs", CreationType.MOB);
         plugin.blocks().rebuild(registry);
         // Receitas e drops só depois de tudo carregado, pois um ingrediente pode ser outro item/bloco (cc:<id>).
         int recipes = 0;
@@ -104,10 +113,23 @@ public final class ItemLoader {
                 }
             }
         }
+        for (var creation : registry.all(CreationType.MOB)) {
+            MobDefinition mob = (MobDefinition) creation;
+            for (DropSpec drop : mob.drops()) {
+                if (resolveStack(drop.item(), 1) == null) {
+                    plugin.getLogger().warning("Mob '" + mob.id() + "': drop '" + drop.item() + "' não existe.");
+                }
+            }
+            for (String equip : mob.equipment().values()) {
+                if (resolveStack(equip, 1) == null) {
+                    plugin.getLogger().warning("Mob '" + mob.id() + "': equipamento '" + equip + "' não existe.");
+                }
+            }
+        }
         for (Player online : Bukkit.getOnlinePlayers()) {
             discoverFor(online);
         }
-        return new LoadResult(items, blocks, recipes);
+        return new LoadResult(items, blocks, mobs, recipes);
     }
 
     /** Lê todos os .yml de uma pasta de definições. @return quantas criações foram registradas */
@@ -131,7 +153,11 @@ public final class ItemLoader {
                     if (type == CreationType.BLOCK && registry.get(CreationType.ITEM, id).isPresent()) {
                         throw new IllegalArgumentException("id já usado por um item");
                     }
-                    registry.register(type == CreationType.ITEM ? parse(id, section) : parseBlock(id, section));
+                    registry.register(switch (type) {
+                        case ITEM -> parse(id, section);
+                        case BLOCK -> parseBlock(id, section);
+                        case MOB -> parseMob(id, section);
+                    });
                     loaded++;
                 } catch (IllegalArgumentException e) {
                     warn(file, id, e.getMessage());
@@ -182,6 +208,58 @@ public final class ItemLoader {
         }
         return new BlockDefinition(id, s.getString("nome", ""), List.copyOf(s.getStringList("lore")), model, state,
                 hardness, tool, tier, requiresTool, List.copyOf(drops), parseRecipe(s));
+    }
+
+    // ── Mobs ────────────────────────────────────────────────────
+
+    private MobDefinition parseMob(String id, ConfigurationSection s) {
+        String typeName = s.getString("tipo", "");
+        EntityType entity = null;
+        for (EntityType candidate : EntityType.values()) {
+            if (candidate != EntityType.UNKNOWN && candidate.name().equalsIgnoreCase(typeName)) {
+                entity = candidate;
+            }
+        }
+        if (entity == null || entity.getEntityClass() == null
+                || !LivingEntity.class.isAssignableFrom(entity.getEntityClass())
+                || entity == EntityType.PLAYER || entity == EntityType.ARMOR_STAND || entity == EntityType.GIANT) {
+            throw new IllegalArgumentException("tipo inválido '" + typeName + "' (use um mob vivo, ex.: ZOMBIE)");
+        }
+        Map<Attribute, Double> attributes = new LinkedHashMap<>();
+        ConfigurationSection attrs = s.getConfigurationSection("atributos");
+        if (attrs != null) {
+            for (String name : attrs.getKeys(false)) {
+                Attribute attribute = Registry.ATTRIBUTE.get(namespaced(name));
+                if (attribute == null || !attrs.isDouble(name) && !attrs.isInt(name)) {
+                    throw new IllegalArgumentException("atributo inválido '" + name + "' (ex.: max_health: 40)");
+                }
+                attributes.put(attribute, attrs.getDouble(name));
+            }
+        }
+        Map<EquipmentSlot, String> equipment = new LinkedHashMap<>();
+        ConfigurationSection equip = s.getConfigurationSection("equipamento");
+        if (equip != null) {
+            for (String slotName : equip.getKeys(false)) {
+                EquipmentSlot slot = switch (slotName.toLowerCase(Locale.ROOT)) {
+                    case "mainhand" -> EquipmentSlot.HAND;
+                    case "offhand" -> EquipmentSlot.OFF_HAND;
+                    case "head" -> EquipmentSlot.HEAD;
+                    case "chest" -> EquipmentSlot.CHEST;
+                    case "legs" -> EquipmentSlot.LEGS;
+                    case "feet" -> EquipmentSlot.FEET;
+                    default -> throw new IllegalArgumentException("slot de equipamento inválido '" + slotName
+                            + "' (mainhand, offhand, head, chest, legs, feet)");
+                };
+                equipment.put(slot, equip.getString(slotName, ""));
+            }
+        }
+        List<DropSpec> drops = new ArrayList<>();
+        for (Map<?, ?> raw : s.getMapList("drops")) {
+            drops.add(parseDrop(raw));
+        }
+        return new MobDefinition(id, entity, s.getString("nome", ""), Map.copyOf(attributes), Map.copyOf(equipment),
+                List.copyOf(drops), s.getBoolean("drops-vanilla", false), s.getInt("xp", -1),
+                s.getBoolean("brilho", false), s.getBoolean("silencioso", false));
     }
 
     private static DropSpec parseDrop(Map<?, ?> raw) {

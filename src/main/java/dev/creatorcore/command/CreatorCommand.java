@@ -59,12 +59,14 @@ public final class CreatorCommand implements TabExecutor {
             case "listar" -> list(sender);
             case "recarregar" -> {
                 var loaded = plugin.itemLoader().load();
-                send(sender, "<green>Recarregado: <white><p0></white> item(ns), <white><p1></white> bloco(s) e "
-                                + "<white><p2></white> receita(s).",
-                        String.valueOf(loaded.items()), String.valueOf(loaded.blocks()), String.valueOf(loaded.recipes()));
+                send(sender, "<green>Recarregado: <white><p0></white> item(ns), <white><p1></white> bloco(s), "
+                                + "<white><p2></white> mob(s) e <white><p3></white> receita(s).",
+                        String.valueOf(loaded.items()), String.valueOf(loaded.blocks()), String.valueOf(loaded.mobs()),
+                        String.valueOf(loaded.recipes()));
             }
             case "dar" -> give(sender, args);
-            default -> send(sender, "<gray>Uso: <white>/cc [versao|pacote|atualizar|listar|recarregar|dar <id> [jogador] [quantidade]]");
+            case "invocar" -> summon(sender, args);
+            default -> send(sender, "<gray>Uso: <white>/cc [versao|pacote|atualizar|listar|recarregar|dar <id> [jogador] [quantidade]|invocar <id> [quantidade]]");
         }
         return true;
     }
@@ -79,14 +81,53 @@ public final class CreatorCommand implements TabExecutor {
     private void list(CommandSender sender) {
         var items = plugin.registry().all(CreationType.ITEM);
         var blocks = plugin.registry().all(CreationType.BLOCK);
-        if (items.isEmpty() && blocks.isEmpty()) {
-            send(sender, "<yellow>Nada carregado. Veja as pastas plugins/CreatorCore/items/ e blocks/.");
+        var mobs = plugin.registry().all(CreationType.MOB);
+        if (items.isEmpty() && blocks.isEmpty() && mobs.isEmpty()) {
+            send(sender, "<yellow>Nada carregado. Veja as pastas plugins/CreatorCore/items/, blocks/ e mobs/.");
             return;
         }
+        send(sender, "<gray>Mobs (<white><p0></white>): <white><p1>", String.valueOf(mobs.size()),
+                String.join(", ", mobs.stream().map(Creation::id).toList()));
         send(sender, "<gray>Itens (<white><p0></white>): <white><p1>", String.valueOf(items.size()),
                 String.join(", ", items.stream().map(Creation::id).toList()));
         send(sender, "<gray>Blocos (<white><p0></white>): <white><p1>", String.valueOf(blocks.size()),
                 String.join(", ", blocks.stream().map(Creation::id).toList()));
+    }
+
+    /** Invoca um mob customizado onde o jogador está olhando (ou aos seus pés). */
+    private void summon(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            send(sender, "<red>Apenas jogadores podem invocar mobs.");
+            return;
+        }
+        if (args.length < 2) {
+            send(sender, "<gray>Uso: <white>/cc invocar <id> [quantidade]");
+            return;
+        }
+        var found = plugin.registry().get(CreationType.MOB, args[1].toLowerCase(Locale.ROOT));
+        if (found.isEmpty()) {
+            send(sender, "<red>Mob <white><p0></white> não existe. Veja /cc listar.", args[1]);
+            return;
+        }
+        int amount = 1;
+        if (args.length >= 3) {
+            try {
+                amount = Integer.parseInt(args[2]);
+            } catch (NumberFormatException e) {
+                amount = -1;
+            }
+            if (amount < 1 || amount > 20) {
+                send(sender, "<red>Quantidade inválida (use de 1 a 20).");
+                return;
+            }
+        }
+        var target = player.getTargetBlockExact(20);
+        var where = target == null ? player.getLocation() : target.getLocation().add(0.5, 1, 0.5);
+        var mob = (dev.creatorcore.mob.MobDefinition) found.get();
+        for (int i = 0; i < amount; i++) {
+            mob.spawn(plugin, where);
+        }
+        send(sender, "<green>Invocado <white><p0>x <p1></white>.", String.valueOf(amount), mob.id());
     }
 
     /** Item ou bloco (como item) com o id dado. */
@@ -152,13 +193,17 @@ public final class CreatorCommand implements TabExecutor {
     public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
         boolean admin = sender.hasPermission(PERM);
         if (args.length == 1) {
-            return admin ? List.of("versao", "pacote", "atualizar", "listar", "recarregar", "dar")
+            return admin ? List.of("versao", "pacote", "atualizar", "listar", "recarregar", "dar", "invocar")
                     : List.of("versao", "pacote");
+        }
+        String typed = args[args.length - 1].toLowerCase(Locale.ROOT);
+        if (admin && args[0].equalsIgnoreCase("invocar") && args.length == 2) {
+            return plugin.registry().all(CreationType.MOB).stream().map(Creation::id)
+                    .filter(id -> id.startsWith(typed)).toList();
         }
         if (!admin || !args[0].equalsIgnoreCase("dar")) {
             return List.of();
         }
-        String typed = args[args.length - 1].toLowerCase(Locale.ROOT);
         if (args.length == 2) {
             return java.util.stream.Stream.of(CreationType.ITEM, CreationType.BLOCK)
                     .flatMap(type -> plugin.registry().all(type).stream()).map(Creation::id)

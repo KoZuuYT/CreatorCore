@@ -26,12 +26,14 @@ public final class CreatorCorePlugin extends JavaPlugin {
     private MiningManager mining;
     private NamespacedKey idKey;
     private NamespacedKey blockKey;
+    private NamespacedKey mobKey;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
         idKey = new NamespacedKey(this, "id");
         blockKey = new NamespacedKey(this, "bloco");
+        mobKey = new NamespacedKey(this, "mob");
 
         blocks = new CustomBlocks(this);
         itemLoader = new ItemLoader(this, registry);
@@ -46,6 +48,7 @@ public final class CreatorCorePlugin extends JavaPlugin {
         mining = new MiningManager(this, blocks);
         plugins.registerEvents(mining, this);
         plugins.registerEvents(new BlockListener(this, blocks, mining), this);
+        plugins.registerEvents(new dev.creatorcore.mob.MobListener(this), this);
         plugins.registerEvents(new Listener() {
             @EventHandler
             public void onJoin(PlayerJoinEvent event) {
@@ -62,7 +65,7 @@ public final class CreatorCorePlugin extends JavaPlugin {
         updater.start();
         resourcePack.start();
         getLogger().info("CreatorCore " + getPluginMeta().getVersion() + " ativado (" + loaded.items()
-                + " item(ns), " + loaded.blocks() + " bloco(s), " + loaded.recipes() + " receita(s)).");
+                + " item(ns), " + loaded.blocks() + " bloco(s), " + loaded.mobs() + " mob(s), " + loaded.recipes() + " receita(s)).");
     }
 
     @Override
@@ -103,6 +106,11 @@ public final class CreatorCorePlugin extends JavaPlugin {
     /** Chave {@code creatorcore:bloco} gravada nos itens que colocam um bloco customizado. */
     public NamespacedKey blockKey() {
         return blockKey;
+    }
+
+    /** Chave {@code creatorcore:mob} gravada nos mobs invocados pelo plugin. */
+    public NamespacedKey mobKey() {
+        return mobKey;
     }
 
     /** Arquivo .jar deste plugin (usado pelo atualizador para substituí-lo). */
