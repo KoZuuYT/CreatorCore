@@ -1,0 +1,18 @@
+name: CreatorCore
+version: '${version}'
+main: dev.creatorcore.CreatorCorePlugin
+api-version: '26.3'
+description: Hub de criações customizadas para o vanilla (itens, mobs, blocos e mais).
+author: KoZuuYT
+website: https://github.com/KoZuuYT/CreatorCore
+
+commands:
+  creatorcore:
+    description: Informações do CreatorCore e atualização pelo GitHub.
+    usage: /creatorcore [versao|atualizar]
+    aliases: [cc]
+
+permissions:
+  creatorcore.admin:
+    description: Acesso administrativo ao CreatorCore.
+    default: op

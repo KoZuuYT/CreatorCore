@@ -1,0 +1,8 @@
+# CreatorCore — configuração
+updater:
+  # Baixa sozinho o jar da última release do GitHub (aplicado no próximo reinício).
+  enabled: true
+  repository: KoZuuYT/CreatorCore
+  check-interval-minutes: 30
+  # Desliga o servidor quando vazio e há atualização baixada (para um painel/script religar).
+  restart-when-empty: false
