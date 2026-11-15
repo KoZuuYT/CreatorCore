@@ -1,0 +1,8 @@
+# Exemplo de definição de itens. Cada chave de nível superior é o id do item
+# (minúsculas, números e _). Use /cc recarregar para aplicar mudanças e /cc dar <id> para receber.
+# Textos usam MiniMessage: <gold>, <gray>, <bold>...
+espada_teste:
+  material: DIAMOND_SWORD
+  nome: "<gold>Espada de Teste"
+  lore:
+    - "<gray>Primeira criação do CreatorCore."

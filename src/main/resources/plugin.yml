@@ -9,7 +9,7 @@ website: https://github.com/KoZuuYT/CreatorCore
 commands:
   creatorcore:
     description: Informações do CreatorCore e atualização pelo GitHub.
-    usage: /creatorcore [versao|atualizar]
+    usage: /creatorcore [versao|atualizar|listar|recarregar|dar]
     aliases: [cc]
 
 permissions:

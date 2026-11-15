@@ -16,7 +16,6 @@ import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.time.Duration;
 import java.util.HexFormat;
-import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.jar.JarFile;
@@ -24,9 +23,7 @@ import java.util.logging.Level;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.Bukkit;
-import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -38,7 +35,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
  * que a versão em execução, baixa o jar para {@code plugins/update/}. O próprio servidor troca
  * o jar na próxima inicialização (mecanismo padrão da pasta update). Rede só fora da thread principal.
  */
-public final class AutoUpdater implements Listener, TabExecutor {
+public final class AutoUpdater implements Listener {
 
     private static final String PERM = "creatorcore.admin";
     private static final MiniMessage MM = MiniMessage.miniMessage();
@@ -264,32 +261,16 @@ public final class AutoUpdater implements Listener, TabExecutor {
         }
     }
 
-    // ── /creatorcore ────────────────────────────────────────────
+    // ── Usado por /creatorcore ──────────────────────────────────
 
-    @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (args.length > 0 && args[0].equalsIgnoreCase("atualizar")) {
-            if (!sender.hasPermission(PERM)) {
-                send(sender, "<red>Sem permissão.", null);
-                return true;
-            }
-            send(sender, "<gray>Checando a release mais recente no GitHub…", null);
-            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> check(sender));
-            return true;
-        }
-        send(sender, "<gray>Versão em execução: <white>" + currentVersion() + "</white>"
-                + (pendingVersion == null ? "" : " <dark_gray>| <yellow>aguardando reinício: <white>" + pendingVersion), null);
-        if (sender.hasPermission(PERM)) {
-            send(sender, "<gray>Use <white>/creatorcore atualizar</white> para checar o GitHub agora.", null);
-        }
-        return true;
+    /** Versão baixada que aguarda reinício, ou {@code null}. */
+    public String pendingVersion() {
+        return pendingVersion;
     }
 
-    @Override
-    public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
-        if (args.length != 1) {
-            return List.of();
-        }
-        return sender.hasPermission(PERM) ? List.of("versao", "atualizar") : List.of("versao");
+    /** Checa o GitHub agora (assíncrono), respondendo a {@code feedback}. */
+    public void checkNow(CommandSender feedback) {
+        send(feedback, "<gray>Checando a release mais recente no GitHub…", null);
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> check(feedback));
     }
 }

@@ -31,6 +31,20 @@ Hub de criações customizadas para o Minecraft vanilla (itens, mobs, blocos e m
 .\scripts\server.ps1 stop             # para por RCON
 ```
 
+## Definindo itens
+
+Em `plugins/CreatorCore/items/*.yml`, cada chave de nível superior é o id do item (minúsculas, números e `_`):
+
+```yaml
+espada_teste:
+  material: DIAMOND_SWORD
+  nome: "<gold>Espada de Teste"     # MiniMessage
+  lore:
+    - "<gray>Primeira criação."
+```
+
+`/cc recarregar` aplica mudanças; `/cc dar <id>` entrega o item. Entradas inválidas são ignoradas com aviso no console. Os itens carregam o id em `creatorcore:id` (PDC).
+
 ## Atualização automática
 
 O plugin consulta a última release de `KoZuuYT/CreatorCore` a cada 30 min, baixa o jar para `plugins/update/` e o servidor o aplica no próximo reinício. Configuração em `config.yml` (`updater.*`). Comandos: `/creatorcore` e `/creatorcore atualizar` (permissão `creatorcore.admin`).
@@ -41,3 +55,4 @@ O plugin consulta a última release de `KoZuuYT/CreatorCore` a cada 30 min, baix
 |---|---|
 | 0.1.0 | Esqueleto: classe principal, `plugin.yml`, `config.yml`, atualizador automático via GitHub, scripts de build/release |
 | 0.2.0 | Servidor de teste em `run/` e `scripts/server.ps1` (start/stop/RCON); atualizador validado em servidor real |
+| 0.3.0 | Base de registro de criações (`CreationRegistry`, tipos item/bloco/mob), itens definidos em YAML (`plugins/CreatorCore/items/*.yml`) e comandos `/cc listar`, `/cc recarregar`, `/cc dar <id> [jogador] [qtd]` |
