@@ -26,7 +26,8 @@ import org.bukkit.persistence.PersistentDataType;
  */
 public record ItemDefinition(String id, Material material, String name, List<String> lore,
                              List<AttributeSpec> attributes, Map<Enchantment, Integer> enchantments,
-                             boolean unbreakable, boolean glint, String model, RecipeSpec recipe) implements ItemSource {
+                             boolean unbreakable, boolean glint, String model, RecipeSpec recipe,
+                             java.util.List<CookSpec> cooking) implements ItemSource {
 
     private static final MiniMessage MM = MiniMessage.miniMessage();
 

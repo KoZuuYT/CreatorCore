@@ -11,4 +11,7 @@ public interface ItemSource extends Creation {
 
     /** Receita de criação, ou {@code null}. */
     RecipeSpec recipe();
+
+    /** Receitas de fornalha, alto-forno, defumador e fogueira que produzem este item. */
+    java.util.List<CookSpec> cooking();
 }

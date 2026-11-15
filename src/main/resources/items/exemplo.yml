@@ -14,6 +14,18 @@
 #       mesmo do modelo no pack. Sem o pack, o item aparece com o visual vanilla do material.
 #   receita: tipo shaped (forma + ingredientes) ou shapeless (ingredientes: [lista]); quantidade opcional.
 #       Ingrediente: nome de material (EMERALD) ou cc:<id> para outro item do CreatorCore.
+#   cozimento: lista de receitas que PRODUZEM este item: {tipo, entrada, xp, tempo, quantidade}
+#       tipo: furnace (padrão, 200 ticks) | blasting (100) | smoking (100) | campfire (600)
+#       entrada: material ou cc:<id>; xp: experiência (padrão 0); tempo em ticks; quantidade 1-64.
+#       Vale também nos blocos.
+
+ferro_polido:
+  material: IRON_INGOT
+  nome: "<white>Ferro Polido"
+  brilho: true
+  cozimento:
+    - {tipo: furnace, entrada: IRON_INGOT, xp: 0.7}
+    - {tipo: blasting, entrada: IRON_INGOT, xp: 0.7}
 
 diamante_polido:
   material: DIAMOND

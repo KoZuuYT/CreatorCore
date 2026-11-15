@@ -104,6 +104,9 @@ public final class ItemLoader {
                 if (creation instanceof ItemSource item && item.recipe() != null && registerRecipe(item)) {
                     recipes++;
                 }
+                if (creation instanceof ItemSource item) {
+                    recipes += registerCooking(item);
+                }
             }
         }
         for (var creation : registry.all(CreationType.BLOCK)) {
@@ -182,6 +185,35 @@ public final class ItemLoader {
         }
     }
 
+    /** Registra as receitas de cozimento do item. @return quantas foram aceitas */
+    private int registerCooking(ItemSource item) {
+        int ok = 0;
+        List<CookSpec> specs = item.cooking();
+        for (int i = 0; i < specs.size(); i++) {
+            CookSpec spec = specs.get(i);
+            try {
+                RecipeChoice input = choice(spec.input());
+                String prefix = item.type() == CreationType.BLOCK ? "cozinhar_bloco_" : "cozinhar_";
+                NamespacedKey key = new NamespacedKey(plugin, prefix + item.id() + "_" + i);
+                var result = item.create(plugin, spec.amount());
+                Recipe recipe = switch (spec.kind()) {
+                    case "blasting" -> new org.bukkit.inventory.BlastingRecipe(key, result, input, spec.xp(), spec.time());
+                    case "smoking" -> new org.bukkit.inventory.SmokingRecipe(key, result, input, spec.xp(), spec.time());
+                    case "campfire" -> new org.bukkit.inventory.CampfireRecipe(key, result, input, spec.xp(), spec.time());
+                    default -> new org.bukkit.inventory.FurnaceRecipe(key, result, input, spec.xp(), spec.time());
+                };
+                if (!Bukkit.addRecipe(recipe)) {
+                    throw new IllegalArgumentException("o servidor recusou a receita");
+                }
+                recipeKeys.add(key);
+                ok++;
+            } catch (IllegalArgumentException e) {
+                plugin.getLogger().warning("Cozimento " + (i + 1) + " de '" + item.id() + "' ignorado (" + e.getMessage() + ").");
+            }
+        }
+        return ok;
+    }
+
     // ── Blocos ──────────────────────────────────────────────────
 
     private BlockDefinition parseBlock(String id, ConfigurationSection s) {
@@ -208,7 +240,7 @@ public final class ItemLoader {
             drops.add(parseDrop(raw));
         }
         return new BlockDefinition(id, s.getString("nome", ""), List.copyOf(s.getStringList("lore")), model, state,
-                hardness, tool, tier, requiresTool, List.copyOf(drops), parseRecipe(s));
+                hardness, tool, tier, requiresTool, List.copyOf(drops), parseRecipe(s), parseCooking(s));
     }
 
     // ── Mobs ────────────────────────────────────────────────────
@@ -323,7 +355,38 @@ public final class ItemLoader {
         }
         return new ItemDefinition(id, material, s.getString("nome", ""), List.copyOf(s.getStringList("lore")),
                 parseAttributes(s), parseEnchantments(s.getConfigurationSection("encantamentos")),
-                s.getBoolean("inquebravel", false), s.getBoolean("brilho", false), parseModel(s), parseRecipe(s));
+                s.getBoolean("inquebravel", false), s.getBoolean("brilho", false), parseModel(s), parseRecipe(s), parseCooking(s));
+    }
+
+    private static final Map<String, Integer> COOK_DEFAULT_TIME = Map.of("furnace", 200, "blasting", 100,
+            "smoking", 100, "campfire", 600);
+
+    /** {@code cozimento:} lista de {tipo, entrada, xp, tempo, quantidade}. */
+    private static List<CookSpec> parseCooking(ConfigurationSection s) {
+        List<CookSpec> specs = new ArrayList<>();
+        for (Map<?, ?> raw : s.getMapList("cozimento")) {
+            String kind = raw.get("tipo") == null ? "furnace" : String.valueOf(raw.get("tipo")).toLowerCase(Locale.ROOT);
+            if (!COOK_DEFAULT_TIME.containsKey(kind)) {
+                throw new IllegalArgumentException("cozimento: tipo inválido '" + kind
+                        + "' (furnace, blasting, smoking ou campfire)");
+            }
+            Object input = raw.get("entrada");
+            if (input == null || String.valueOf(input).isBlank()) {
+                throw new IllegalArgumentException("cozimento sem 'entrada'");
+            }
+            try {
+                float xp = raw.get("xp") == null ? 0f : Float.parseFloat(String.valueOf(raw.get("xp")));
+                int time = raw.get("tempo") == null ? COOK_DEFAULT_TIME.get(kind) : Integer.parseInt(String.valueOf(raw.get("tempo")));
+                int amount = raw.get("quantidade") == null ? 1 : Integer.parseInt(String.valueOf(raw.get("quantidade")));
+                if (xp < 0 || time < 1 || amount < 1 || amount > 64) {
+                    throw new NumberFormatException();
+                }
+                specs.add(new CookSpec(kind, String.valueOf(input).strip(), xp, time, amount));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("cozimento: xp, tempo (ticks) ou quantidade (1-64) inválidos");
+            }
+        }
+        return List.copyOf(specs);
     }
 
     private static String parseModel(ConfigurationSection s) {
