@@ -6,6 +6,7 @@ import dev.creatorcore.registry.CreationType;
 import java.util.concurrent.ThreadLocalRandom;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
@@ -17,6 +18,41 @@ public final class MobListener implements Listener {
 
     public MobListener(CreatorCorePlugin plugin) {
         this.plugin = plugin;
+    }
+
+    /** Spawn natural: troca o mob vanilla de base pelo customizado, conforme a chance e as regras do mob. */
+    @EventHandler(ignoreCancelled = true)
+    public void onSpawn(CreatureSpawnEvent event) {
+        if (event.getSpawnReason() != CreatureSpawnEvent.SpawnReason.NATURAL) {
+            return;
+        }
+        var entity = event.getEntity();
+        if (entity.getPersistentDataContainer().has(plugin.mobKey(), PersistentDataType.STRING)) {
+            return;
+        }
+        var location = entity.getLocation();
+        for (var creation : plugin.registry().all(CreationType.MOB)) {
+            MobDefinition mob = (MobDefinition) creation;
+            SpawnSpec spawn = mob.spawn();
+            if (spawn == null || mob.entity() != entity.getType()
+                    || !spawn.worlds().isEmpty() && !spawn.worlds().contains(location.getWorld().getName())
+                    || !spawn.biomes().isEmpty()
+                            && !spawn.biomes().contains(location.getBlock().getBiome().getKey().getKey())
+                    || ThreadLocalRandom.current().nextDouble() >= spawn.chance()
+                    || countAlive(location.getWorld(), mob.id()) >= spawn.limit()) {
+                continue;
+            }
+            event.setCancelled(true);
+            var where = location.clone();
+            plugin.getServer().getScheduler().runTask(plugin, () -> mob.spawn(plugin, where));
+            return;
+        }
+    }
+
+    private long countAlive(org.bukkit.World world, String id) {
+        return world.getLivingEntities().stream()
+                .filter(e -> id.equals(e.getPersistentDataContainer().get(plugin.mobKey(), PersistentDataType.STRING)))
+                .count();
     }
 
     @EventHandler

@@ -5,6 +5,7 @@ import dev.creatorcore.block.BlockDefinition;
 import dev.creatorcore.block.DropSpec;
 import dev.creatorcore.block.ToolInfo;
 import dev.creatorcore.mob.MobDefinition;
+import dev.creatorcore.mob.SpawnSpec;
 import dev.creatorcore.registry.CreationRegistry;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
@@ -259,7 +260,38 @@ public final class ItemLoader {
         }
         return new MobDefinition(id, entity, s.getString("nome", ""), Map.copyOf(attributes), Map.copyOf(equipment),
                 List.copyOf(drops), s.getBoolean("drops-vanilla", false), s.getInt("xp", -1),
-                s.getBoolean("brilho", false), s.getBoolean("silencioso", false));
+                s.getBoolean("brilho", false), s.getBoolean("silencioso", false), parseSpawn(s));
+    }
+
+    private static SpawnSpec parseSpawn(ConfigurationSection s) {
+        ConfigurationSection n = s.getConfigurationSection("spawn");
+        if (n == null) {
+            return null;
+        }
+        double chance = n.getDouble("chance", 0.1);
+        if (chance <= 0 || chance > 1) {
+            throw new IllegalArgumentException("spawn: chance inválida (use de 0 a 1, ex.: 0.2)");
+        }
+        int limit = n.getInt("limite", 10);
+        if (limit < 1 || limit > 1000) {
+            throw new IllegalArgumentException("spawn: limite inválido (1 a 1000)");
+        }
+        return new SpawnSpec(lowerSet(n.getStringList("mundos"), false), lowerSet(n.getStringList("biomas"), true),
+                chance, limit);
+    }
+
+    private static Set<String> lowerSet(List<String> values, boolean lower) {
+        Set<String> result = new LinkedHashSet<>();
+        for (String value : values) {
+            String v = value.strip();
+            if (lower) {
+                v = v.toLowerCase(Locale.ROOT);
+                int colon = v.indexOf(':');
+                v = colon < 0 ? v : v.substring(colon + 1);
+            }
+            result.add(v);
+        }
+        return result;
     }
 
     private static DropSpec parseDrop(Map<?, ?> raw) {

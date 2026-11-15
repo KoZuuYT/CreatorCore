@@ -94,6 +94,8 @@ zumbi_forte:
   xp: 30
 ```
 
+**Spawn natural** (opcional): `spawn: {chance: 0.05, limite: 5, mundos: [world], biomas: [plains]}`. Quando o jogo faria nascer o mob vanilla de `tipo`, ele é trocado pelo customizado com essa chance (respeitando mundo, bioma e o limite de vivos por mundo).
+
 `/cc invocar <id> [quantidade]` cria o mob onde você olha. Os mobs levam `creatorcore:mob` (PDC), são persistentes (não somem por distância) e substituem os drops vanilla pelos definidos (`drops-vanilla: true` mantém os dois).
 
 ## Resource pack
@@ -118,3 +120,4 @@ O plugin consulta a última release de `KoZuuYT/CreatorCore` a cada 30 min, baix
 | 0.5.0 | Resource pack: gerador em `tools/pack`, `CreatorCore-Pack.zip` anexado à release, descoberta automática de URL/SHA-1 com cache, link manual no `config.yml`, campo `modelo:` nos itens e comando `/cc pacote` |
 | 0.6.0 | Blocos customizados (estados do note block): colocar, quebrar, drops, dureza e ferramenta/nível próprios, receitas, texturas no pack; `/cc dar` e `/cc listar` cobrem blocos |
 | 0.7.0 | Mobs customizados (`mobs/*.yml`): mob vanilla de base com nome, atributos, equipamento, drops e XP próprios; comando `/cc invocar`; app `CreatorCoreServer.exe` para ligar/desligar o servidor de teste |
+| 0.8.0 | Spawn natural de mobs customizados (chance, mundo, bioma e limite por mundo) |

@@ -128,7 +128,7 @@ internal sealed class MainForm : Form
 
         FormClosing += OnClosing;
         timer.Interval = 1000;
-        timer.Tick += (s, e) => Tick();
+        timer.Tick += (s, e) => { try { Tick(); } catch (Exception) { /* tenta de novo no próximo ciclo */ } };
         timer.Start();
 
         if (runDir == null)
@@ -163,16 +163,35 @@ internal sealed class MainForm : Form
 
     private string PropsPath { get { return Path.Combine(runDir, "server.properties"); } }
 
+    private Dictionary<string, string> propsCache;
+
+    /// <summary>Lê o arquivo mesmo se outro processo (o servidor) o estiver usando.</summary>
+    private static string[] ReadLinesShared(string path)
+    {
+        using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+        using (var reader = new StreamReader(stream, Encoding.UTF8))
+        {
+            var lines = new List<string>();
+            string line;
+            while ((line = reader.ReadLine()) != null) lines.Add(line);
+            return lines.ToArray();
+        }
+    }
+
     private Dictionary<string, string> Props()
     {
         var map = new Dictionary<string, string>();
         if (!File.Exists(PropsPath)) return map;
-        foreach (string line in File.ReadAllLines(PropsPath))
+        string[] lines;
+        try { lines = ReadLinesShared(PropsPath); }
+        catch (IOException) { return propsCache ?? map; }   // arquivo em uso pelo servidor: usa a última leitura
+        foreach (string line in lines)
         {
             int eq = line.IndexOf('=');
             if (line.StartsWith("#") || eq < 0) continue;
             map[line.Substring(0, eq).Trim()] = line.Substring(eq + 1).Trim();
         }
+        propsCache = map;
         return map;
     }
 
@@ -196,7 +215,7 @@ internal sealed class MainForm : Form
         var bytes = new byte[12];
         using (var rng = RandomNumberGenerator.Create()) rng.GetBytes(bytes);
         string generated = BitConverter.ToString(bytes).Replace("-", "").ToLowerInvariant();
-        var lines = File.Exists(PropsPath) ? File.ReadAllLines(PropsPath).ToList() : new List<string>();
+        var lines = File.Exists(PropsPath) ? ReadLinesShared(PropsPath).ToList() : new List<string>();
         SetProp(lines, "enable-rcon", "true");
         SetProp(lines, "rcon.password", string.IsNullOrEmpty(password) ? generated : password);
         File.WriteAllLines(PropsPath, lines, new UTF8Encoding(false));

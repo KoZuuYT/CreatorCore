@@ -27,10 +27,11 @@ import org.bukkit.persistence.PersistentDataType;
  * @param drops      drops próprios
  * @param keepVanillaDrops mantém também os drops vanilla da espécie
  * @param xp         experiência ao morrer (-1 = a vanilla)
+ * @param spawn      spawn natural (null = só por /cc invocar)
  */
 public record MobDefinition(String id, EntityType entity, String name, Map<Attribute, Double> attributes,
                             Map<EquipmentSlot, String> equipment, List<DropSpec> drops, boolean keepVanillaDrops,
-                            int xp, boolean glowing, boolean silent) implements Creation {
+                            int xp, boolean glowing, boolean silent, SpawnSpec spawn) implements Creation {
 
     private static final MiniMessage MM = MiniMessage.miniMessage();
 
