@@ -355,7 +355,134 @@ public final class ItemLoader {
         }
         return new ItemDefinition(id, material, s.getString("nome", ""), List.copyOf(s.getStringList("lore")),
                 parseAttributes(s), parseEnchantments(s.getConfigurationSection("encantamentos")),
-                s.getBoolean("inquebravel", false), s.getBoolean("brilho", false), parseModel(s), parseRecipe(s), parseCooking(s));
+                s.getBoolean("inquebravel", false), s.getBoolean("brilho", false), parseModel(s), parseRecipe(s), parseCooking(s),
+                parseAbilities(s));
+    }
+
+    private static final Set<String> TRIGGERS = Set.of("right_click", "left_click", "sneak_right_click", "hit");
+    private static final Set<String> ACTION_TYPES = Set.of("efeito", "curar", "dano", "comando", "projetil", "som",
+            "raio", "impulso");
+
+    /** {@code habilidades:} lista de {gatilho, recarga, consumir, acoes: [...]}. */
+    private static List<AbilitySpec> parseAbilities(ConfigurationSection s) {
+        List<AbilitySpec> abilities = new ArrayList<>();
+        for (Map<?, ?> raw : s.getMapList("habilidades")) {
+            String trigger = String.valueOf(raw.get("gatilho")).toLowerCase(Locale.ROOT);
+            if (!TRIGGERS.contains(trigger)) {
+                throw new IllegalArgumentException("habilidade: gatilho inválido '" + trigger
+                        + "' (right_click, left_click, sneak_right_click ou hit)");
+            }
+            double cooldown = number(raw.get("recarga"), 0, "recarga");
+            if (cooldown < 0 || cooldown > 86400) {
+                throw new IllegalArgumentException("habilidade: recarga inválida (segundos, 0 a 86400)");
+            }
+            boolean consume = raw.get("consumir") != null && Boolean.parseBoolean(String.valueOf(raw.get("consumir")));
+            List<AbilitySpec.Action> actions = new ArrayList<>();
+            if (!(raw.get("acoes") instanceof List<?> list) || list.isEmpty()) {
+                throw new IllegalArgumentException("habilidade sem 'acoes'");
+            }
+            for (Object entry : list) {
+                if (!(entry instanceof Map<?, ?> map)) {
+                    throw new IllegalArgumentException("habilidade: cada ação deve ser um mapa {tipo: ...}");
+                }
+                actions.add(parseAction(map, trigger));
+            }
+            abilities.add(new AbilitySpec(trigger, cooldown, consume, List.copyOf(actions)));
+        }
+        return List.copyOf(abilities);
+    }
+
+    private static double number(Object value, double fallback, String field) {
+        if (value == null) {
+            return fallback;
+        }
+        try {
+            return Double.parseDouble(String.valueOf(value));
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("habilidade: '" + field + "' não é um número");
+        }
+    }
+
+    private static AbilitySpec.Action parseAction(Map<?, ?> m, String trigger) {
+        String type = String.valueOf(m.get("tipo")).toLowerCase(Locale.ROOT);
+        if (!ACTION_TYPES.contains(type)) {
+            throw new IllegalArgumentException("ação: tipo inválido '" + type + "' (" + String.join(", ", new java.util.TreeSet<>(ACTION_TYPES)) + ")");
+        }
+        boolean onTarget = "alvo".equalsIgnoreCase(String.valueOf(m.get("em")));
+        if (m.get("em") != null && !onTarget && !"jogador".equalsIgnoreCase(String.valueOf(m.get("em")))) {
+            throw new IllegalArgumentException("ação: 'em' deve ser jogador ou alvo");
+        }
+        org.bukkit.potion.PotionEffectType potion = null;
+        int ticks = 0;
+        int amplifier = 0;
+        double value = number(m.get("valor"), 0, "valor");
+        String text = m.get("texto") == null ? null : String.valueOf(m.get("texto"));
+        EntityType entity = null;
+        switch (type) {
+            case "efeito" -> {
+                potion = Registry.EFFECT.get(namespaced(String.valueOf(m.get("efeito"))));
+                if (potion == null) {
+                    throw new IllegalArgumentException("ação efeito: efeito inválido '" + m.get("efeito") + "'");
+                }
+                double seconds = number(m.get("duracao"), 10, "duracao");
+                double level = number(m.get("nivel"), 1, "nivel");
+                if (seconds <= 0 || seconds > 100000 || level < 1 || level > 255) {
+                    throw new IllegalArgumentException("ação efeito: duracao (segundos) ou nivel (1-255) inválidos");
+                }
+                ticks = (int) Math.round(seconds * 20);
+                amplifier = (int) level - 1;
+            }
+            case "curar", "dano" -> {
+                if (value <= 0 || value > 1000) {
+                    throw new IllegalArgumentException("ação " + type + ": 'valor' deve ser de 0 a 1000");
+                }
+            }
+            case "comando" -> {
+                if (text == null || text.isBlank()) {
+                    throw new IllegalArgumentException("ação comando: falta 'texto' (use %jogador% para o nome)");
+                }
+            }
+            case "som" -> {
+                if (text == null || NamespacedKey.fromString(text.toLowerCase(Locale.ROOT)) == null) {
+                    throw new IllegalArgumentException("ação som: 'texto' deve ser um som (ex.: entity.player.levelup)");
+                }
+                if (value == 0) {
+                    value = 1;
+                }
+            }
+            case "projetil" -> {
+                String name = String.valueOf(m.get("entidade"));
+                for (EntityType candidate : EntityType.values()) {
+                    if (candidate != EntityType.UNKNOWN && candidate.name().equalsIgnoreCase(name)) {
+                        entity = candidate;
+                    }
+                }
+                if (entity == null || entity.getEntityClass() == null
+                        || !org.bukkit.entity.Projectile.class.isAssignableFrom(entity.getEntityClass())) {
+                    throw new IllegalArgumentException("ação projetil: entidade inválida '" + name
+                            + "' (ex.: SNOWBALL, ARROW, SMALL_FIREBALL, WIND_CHARGE)");
+                }
+                if (value == 0) {
+                    value = 1.5;
+                }
+                if (value < 0 || value > 10) {
+                    throw new IllegalArgumentException("ação projetil: 'valor' (velocidade) deve ser de 0 a 10");
+                }
+            }
+            case "impulso" -> {
+                if (value == 0 || Math.abs(value) > 5) {
+                    throw new IllegalArgumentException("ação impulso: 'valor' deve ser diferente de 0 e até 5");
+                }
+            }
+            default -> { }
+        }
+        if (onTarget && (type.equals("projetil") || type.equals("impulso") || type.equals("som"))) {
+            throw new IllegalArgumentException("ação " + type + " só vale para o jogador");
+        }
+        if ((type.equals("dano") || type.equals("raio")) && !onTarget) {
+            throw new IllegalArgumentException("ação " + type + ": use em: alvo");
+        }
+        return new AbilitySpec.Action(type, potion, ticks, amplifier, value, text, entity, onTarget);
     }
 
     private static final Map<String, Integer> COOK_DEFAULT_TIME = Map.of("furnace", 200, "blasting", 100,

@@ -49,6 +49,7 @@ public final class CreatorCorePlugin extends JavaPlugin {
         plugins.registerEvents(mining, this);
         plugins.registerEvents(new BlockListener(this, blocks, mining), this);
         plugins.registerEvents(new dev.creatorcore.mob.MobListener(this), this);
+        plugins.registerEvents(new dev.creatorcore.item.AbilityListener(this), this);
         plugins.registerEvents(new Listener() {
             @EventHandler
             public void onJoin(PlayerJoinEvent event) {

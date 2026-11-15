@@ -19,6 +19,42 @@
 #       entrada: material ou cc:<id>; xp: experiência (padrão 0); tempo em ticks; quantidade 1-64.
 #       Vale também nos blocos.
 
+#   habilidades: lista de {gatilho, recarga, consumir, acoes}
+#       gatilho: right_click | sneak_right_click (com Shift) | left_click | hit (bater numa entidade)
+#       recarga: segundos (padrão 0); consumir: true gasta 1 unidade ao usar (padrão false)
+#       acoes: lista de {tipo, ...}; "em: alvo" aplica ao alvo (entidade atingida ou mirada, até 20 blocos)
+#         efeito:   {tipo: efeito, efeito: speed, duracao: 10, nivel: 2, em: jogador|alvo}
+#         curar:    {tipo: curar, valor: 6, em: jogador|alvo}
+#         dano:     {tipo: dano, valor: 4, em: alvo}
+#         raio:     {tipo: raio, em: alvo}
+#         projetil: {tipo: projetil, entidade: SNOWBALL, valor: 1.5}   (valor = velocidade)
+#         impulso:  {tipo: impulso, valor: 1.2}  (empurra o jogador para onde olha)
+#         som:      {tipo: som, texto: entity.player.levelup, valor: 1}
+#         comando:  {tipo: comando, texto: "say %jogador% usou!"}  (roda no console; só o dono do servidor edita)
+
+cajado_teste:
+  material: STICK
+  nome: "<light_purple>Cajado de Teste"
+  lore:
+    - "<gray>Clique direito: bola de neve rápida."
+    - "<gray>Shift + direito: impulso. Bater: raio."
+  brilho: true
+  habilidades:
+    - gatilho: right_click
+      recarga: 1
+      acoes:
+        - {tipo: projetil, entidade: SNOWBALL, valor: 2}
+        - {tipo: som, texto: entity.snowball.throw}
+    - gatilho: sneak_right_click
+      recarga: 3
+      acoes:
+        - {tipo: impulso, valor: 1.5}
+        - {tipo: efeito, efeito: slow_falling, duracao: 5}
+    - gatilho: hit
+      recarga: 5
+      acoes:
+        - {tipo: raio, em: alvo}
+
 ferro_polido:
   material: IRON_INGOT
   nome: "<white>Ferro Polido"

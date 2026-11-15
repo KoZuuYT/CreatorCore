@@ -57,6 +57,8 @@ espada_teste:
 
 Receitas de **cozimento** (também valem para blocos): `cozimento: [{tipo: furnace, entrada: IRON_INGOT, xp: 0.7, tempo: 200}]`. `tipo` = `furnace`, `blasting` (alto-forno), `smoking` (defumador) ou `campfire`; `entrada` = material ou `cc:<id>`; `quantidade` 1–64.
 
+**Habilidades** (só em itens): `habilidades: [{gatilho: right_click, recarga: 1, consumir: false, acoes: [{tipo: projetil, entidade: SNOWBALL, valor: 2}]}]`. Gatilhos: `right_click`, `sneak_right_click` (com Shift), `left_click`, `hit` (bater numa entidade). Ações: `efeito`, `curar`, `dano`, `raio`, `projetil`, `impulso`, `som`, `comando` (console, `%jogador%`); `em: alvo` aplica à entidade atingida ou mirada. A recarga aparece na barra de ação.
+
 O `exemplo.yml` gerado na primeira execução documenta todos os campos.
 
 `/cc recarregar` aplica mudanças; `/cc dar <id>` entrega o item. Entradas inválidas são ignoradas com aviso no console. Os itens carregam o id em `creatorcore:id` (PDC).
@@ -124,3 +126,4 @@ O plugin consulta a última release de `KoZuuYT/CreatorCore` a cada 30 min, baix
 | 0.7.0 | Mobs customizados (`mobs/*.yml`): mob vanilla de base com nome, atributos, equipamento, drops e XP próprios; comando `/cc invocar`; app `CreatorCoreServer.exe` para ligar/desligar o servidor de teste |
 | 0.8.0 | Spawn natural de mobs customizados (chance, mundo, bioma e limite por mundo) |
 | 0.9.0 | Receitas de cozimento (fornalha, alto-forno, defumador, fogueira) para itens e blocos, com `cc:<id>` como entrada |
+| 0.10.0 | Habilidades de itens: gatilhos (clique, Shift+clique, bater) com recarga e ações (efeito, cura, dano, raio, projétil, impulso, som, comando) |
