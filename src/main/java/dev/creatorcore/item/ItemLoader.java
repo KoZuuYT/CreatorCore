@@ -134,7 +134,18 @@ public final class ItemLoader {
         }
         return new ItemDefinition(id, material, s.getString("nome", ""), List.copyOf(s.getStringList("lore")),
                 parseAttributes(s), parseEnchantments(s.getConfigurationSection("encantamentos")),
-                s.getBoolean("inquebravel", false), s.getBoolean("brilho", false), parseRecipe(s));
+                s.getBoolean("inquebravel", false), s.getBoolean("brilho", false), parseModel(s), parseRecipe(s));
+    }
+
+    private static String parseModel(ConfigurationSection s) {
+        String model = s.getString("modelo");
+        if (model == null || model.isBlank()) {
+            return null;
+        }
+        if (!CreationRegistry.isValidId(model)) {
+            throw new IllegalArgumentException("modelo inválido '" + model + "' (use minúsculas, números e _)");
+        }
+        return model;
     }
 
     private static List<AttributeSpec> parseAttributes(ConfigurationSection s) {

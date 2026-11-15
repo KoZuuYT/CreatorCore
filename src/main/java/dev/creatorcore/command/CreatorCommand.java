@@ -40,13 +40,22 @@ public final class CreatorCommand implements TabExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         String sub = args.length == 0 ? "versao" : args[0].toLowerCase(Locale.ROOT);
-        if (!sub.equals("versao") && !sender.hasPermission(PERM)) {
+        if (!sub.equals("versao") && !sub.equals("pacote") && !sender.hasPermission(PERM)) {
             send(sender, "<red>Você não tem permissão.");
             return true;
         }
         switch (sub) {
             case "versao" -> version(sender);
             case "atualizar" -> plugin.updater().checkNow(sender);
+            case "pacote" -> {
+                if (!(sender instanceof Player player)) {
+                    send(sender, "<red>Apenas jogadores podem receber o pacote.");
+                } else if (plugin.resourcePack().send(player)) {
+                    send(sender, "<gray>Enviando o pacote de recursos…");
+                } else {
+                    send(sender, "<yellow>O servidor ainda não tem um pacote de recursos configurado.");
+                }
+            }
             case "listar" -> list(sender);
             case "recarregar" -> {
                 var loaded = plugin.itemLoader().load();
@@ -54,7 +63,7 @@ public final class CreatorCommand implements TabExecutor {
                         String.valueOf(loaded.items()), String.valueOf(loaded.recipes()));
             }
             case "dar" -> give(sender, args);
-            default -> send(sender, "<gray>Uso: <white>/cc [versao|atualizar|listar|recarregar|dar <id> [jogador] [quantidade]]");
+            default -> send(sender, "<gray>Uso: <white>/cc [versao|pacote|atualizar|listar|recarregar|dar <id> [jogador] [quantidade]]");
         }
         return true;
     }
@@ -132,7 +141,8 @@ public final class CreatorCommand implements TabExecutor {
     public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
         boolean admin = sender.hasPermission(PERM);
         if (args.length == 1) {
-            return admin ? List.of("versao", "atualizar", "listar", "recarregar", "dar") : List.of("versao");
+            return admin ? List.of("versao", "pacote", "atualizar", "listar", "recarregar", "dar")
+                    : List.of("versao", "pacote");
         }
         if (!admin || !args[0].equalsIgnoreCase("dar")) {
             return List.of();

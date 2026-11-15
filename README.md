@@ -57,6 +57,13 @@ O `exemplo.yml` gerado na primeira execução documenta todos os campos.
 
 `/cc recarregar` aplica mudanças; `/cc dar <id>` entrega o item. Entradas inválidas são ignoradas com aviso no console. Os itens carregam o id em `creatorcore:id` (PDC).
 
+## Resource pack
+
+- **Gerador:** `scripts\build-pack.ps1` (roda `tools/pack/build.py`, requer Python 3 + Pillow). Gera `resourcepack/` e `libs/CreatorCore-Pack.zip` (zip determinístico: o SHA-1 só muda se o conteúdo mudar). **Não edite `resourcepack/` à mão**: altere `MODELS` em `tools/pack/build.py`.
+- **Modelos:** cada modelo vale para um material base e é escolhido pelo campo `modelo:` do item (grava `custom_model_data` em texto). Quem não carregar o pack vê o item vanilla normal.
+- **Automático:** o plugin acha o `CreatorCore-Pack.zip` na última release, baixa, calcula o SHA-1 e guarda em `pack-cache.properties` (funciona offline com o último pack). Envia ao jogador ao entrar (opcional por padrão); `/cc pacote` reenvia.
+- **Manual:** `resourcepack.url` e `resourcepack.sha1` no `config.yml` substituem o automático.
+
 ## Atualização automática
 
 O plugin consulta a última release de `KoZuuYT/CreatorCore` a cada 30 min, baixa o jar para `plugins/update/` e o servidor o aplica no próximo reinício. Configuração em `config.yml` (`updater.*`). Comandos: `/creatorcore` e `/creatorcore atualizar` (permissão `creatorcore.admin`).
@@ -69,3 +76,4 @@ O plugin consulta a última release de `KoZuuYT/CreatorCore` a cada 30 min, baix
 | 0.2.0 | Servidor de teste em `run/` e `scripts/server.ps1` (start/stop/RCON); atualizador validado em servidor real |
 | 0.3.0 | Base de registro de criações (`CreationRegistry`, tipos item/bloco/mob), itens definidos em YAML (`plugins/CreatorCore/items/*.yml`) e comandos `/cc listar`, `/cc recarregar`, `/cc dar <id> [jogador] [qtd]` |
 | 0.4.0 | Itens com atributos, encantamentos, `inquebravel` e `brilho`; receitas (com forma e sem forma) que aceitam outros itens do plugin como ingrediente (`cc:<id>`); receitas liberadas no livro de receitas |
+| 0.5.0 | Resource pack: gerador em `tools/pack`, `CreatorCore-Pack.zip` anexado à release, descoberta automática de URL/SHA-1 com cache, link manual no `config.yml`, campo `modelo:` nos itens e comando `/cc pacote` |

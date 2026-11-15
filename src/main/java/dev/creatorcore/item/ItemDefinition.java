@@ -14,6 +14,7 @@ import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.components.CustomModelDataComponent;
 import org.bukkit.persistence.PersistentDataType;
 
 /**
@@ -21,11 +22,12 @@ import org.bukkit.persistence.PersistentDataType;
  * O item criado carrega o id em {@code creatorcore:id} para ser reconhecido depois.
  *
  * @param attributes modificadores de atributo; se houver algum, SUBSTITUEM os do item base (ex.: o dano da espada)
+ * @param model      nome do modelo no resource pack (gravado em custom_model_data), ou {@code null}
  * @param recipe     receita de criação, ou {@code null}
  */
 public record ItemDefinition(String id, Material material, String name, List<String> lore,
                              List<AttributeSpec> attributes, Map<Enchantment, Integer> enchantments,
-                             boolean unbreakable, boolean glint, RecipeSpec recipe) implements Creation {
+                             boolean unbreakable, boolean glint, String model, RecipeSpec recipe) implements Creation {
 
     private static final MiniMessage MM = MiniMessage.miniMessage();
 
@@ -56,6 +58,12 @@ public record ItemDefinition(String id, Material material, String name, List<Str
         }
         if (glint) {
             meta.setEnchantmentGlintOverride(true);
+        }
+        if (model != null) {
+            // O pack escolhe o modelo por esta string; sem o pack, o item continua com o visual vanilla.
+            CustomModelDataComponent data = meta.getCustomModelDataComponent();
+            data.setStrings(List.of(model));
+            meta.setCustomModelDataComponent(data);
         }
         meta.getPersistentDataContainer().set(plugin.idKey(), PersistentDataType.STRING, id);
         stack.setItemMeta(meta);

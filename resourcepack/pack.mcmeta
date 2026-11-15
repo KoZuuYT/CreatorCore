@@ -1,0 +1,13 @@
+{
+  "pack": {
+    "description": "CreatorCore - itens customizados",
+    "min_format": [
+      97,
+      0
+    ],
+    "max_format": [
+      99,
+      0
+    ]
+  }
+}

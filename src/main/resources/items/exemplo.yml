@@ -10,6 +10,8 @@
 #       slot: any (padrão) | mainhand | offhand | hand | head | chest | legs | feet | armor | body
 #       ATENÇÃO: se houver atributos, eles SUBSTITUEM os do item base (dano/velocidade da espada, armadura...).
 #       O jogador tem base 1 de dano e 4 de velocidade: uma espada de diamante é +7 de dano e -2.4 de velocidade.
+#   modelo: nome do modelo no resource pack (ver tools/pack/build.py). O material do item deve ser o
+#       mesmo do modelo no pack. Sem o pack, o item aparece com o visual vanilla do material.
 #   receita: tipo shaped (forma + ingredientes) ou shapeless (ingredientes: [lista]); quantidade opcional.
 #       Ingrediente: nome de material (EMERALD) ou cc:<id> para outro item do CreatorCore.
 
@@ -19,6 +21,7 @@ diamante_polido:
   lore:
     - "<gray>Ingrediente para criações melhores."
   brilho: true
+  modelo: diamante_polido
   receita:
     tipo: shapeless
     ingredientes: [DIAMOND, DIAMOND]
@@ -29,6 +32,7 @@ espada_teste:
   lore:
     - "<gray>Primeira criação do CreatorCore."
   inquebravel: true
+  modelo: espada_teste
   encantamentos:
     sharpness: 3
   atributos:

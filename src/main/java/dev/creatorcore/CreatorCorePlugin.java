@@ -2,6 +2,7 @@ package dev.creatorcore;
 
 import dev.creatorcore.command.CreatorCommand;
 import dev.creatorcore.item.ItemLoader;
+import dev.creatorcore.pack.ResourcePackManager;
 import dev.creatorcore.registry.CreationRegistry;
 import dev.creatorcore.update.AutoUpdater;
 import java.io.File;
@@ -16,6 +17,7 @@ public final class CreatorCorePlugin extends JavaPlugin {
 
     private final CreationRegistry registry = new CreationRegistry();
     private AutoUpdater updater;
+    private ResourcePackManager resourcePack;
     private ItemLoader itemLoader;
     private NamespacedKey idKey;
 
@@ -30,6 +32,8 @@ public final class CreatorCorePlugin extends JavaPlugin {
 
         updater = new AutoUpdater(this);
         getServer().getPluginManager().registerEvents(updater, this);
+        resourcePack = new ResourcePackManager(this);
+        getServer().getPluginManager().registerEvents(resourcePack, this);
         getServer().getPluginManager().registerEvents(new Listener() {
             @EventHandler
             public void onJoin(PlayerJoinEvent event) {
@@ -44,6 +48,7 @@ public final class CreatorCorePlugin extends JavaPlugin {
             command.setTabCompleter(executor);
         }
         updater.start();
+        resourcePack.start();
         getLogger().info("CreatorCore " + getPluginMeta().getVersion() + " ativado (" + loaded.items()
                 + " item(ns), " + loaded.recipes() + " receita(s)).");
     }
@@ -61,6 +66,10 @@ public final class CreatorCorePlugin extends JavaPlugin {
 
     public AutoUpdater updater() {
         return updater;
+    }
+
+    public ResourcePackManager resourcePack() {
+        return resourcePack;
     }
 
     public ItemLoader itemLoader() {
