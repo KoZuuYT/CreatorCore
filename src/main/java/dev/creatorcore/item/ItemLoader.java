@@ -4,6 +4,7 @@ import dev.creatorcore.CreatorCorePlugin;
 import dev.creatorcore.block.BlockDefinition;
 import dev.creatorcore.block.DropSpec;
 import dev.creatorcore.block.ToolInfo;
+import dev.creatorcore.mob.MobBehavior;
 import dev.creatorcore.mob.MobDefinition;
 import dev.creatorcore.mob.SpawnSpec;
 import dev.creatorcore.registry.CreationRegistry;
@@ -309,7 +310,55 @@ public final class ItemLoader {
                 List.copyOf(drops), s.getBoolean("drops-vanilla", false), s.getInt("xp", -1),
                 s.getBoolean("brilho", false), s.getBoolean("silencioso", false), parseSpawn(s),
                 parseModel(s), s.getDouble("escala-modelo", 1.0), s.getDouble("deslocamento-y", 0.0),
-                s.getDouble("rotacao-modelo", 180.0), parseAnimations(s));
+                s.getDouble("rotacao-modelo", 180.0), parseAnimations(s), parseBehavior(s));
+    }
+
+    /** {@code comportamento:} passivo, domavel {item, chance}, distancia {projetil, velocidade, alcance, intervalo, dano}, habilidades. */
+    private MobBehavior parseBehavior(ConfigurationSection mob) {
+        ConfigurationSection s = mob.getConfigurationSection("comportamento");
+        if (s == null) {
+            return null;
+        }
+        MobBehavior.Tame tame = null;
+        ConfigurationSection t = s.getConfigurationSection("domavel");
+        if (t != null) {
+            String item = t.getString("item", "");
+            if (item.isBlank() || !item.startsWith("cc:") && Material.matchMaterial(item) == null) {
+                throw new IllegalArgumentException("comportamento.domavel: 'item' inválido '" + item + "'");
+            }
+            double chance = t.getDouble("chance", 1.0);
+            if (chance <= 0 || chance > 1) {
+                throw new IllegalArgumentException("comportamento.domavel: chance deve ser de 0 a 1");
+            }
+            tame = new MobBehavior.Tame(item, chance);
+        }
+        MobBehavior.Ranged ranged = null;
+        ConfigurationSection r = s.getConfigurationSection("distancia");
+        if (r != null) {
+            String name = r.getString("projetil", "ARROW");
+            EntityType type = null;
+            for (EntityType candidate : EntityType.values()) {
+                if (candidate != EntityType.UNKNOWN && candidate.name().equalsIgnoreCase(name)) {
+                    type = candidate;
+                }
+            }
+            if (type == null || type.getEntityClass() == null
+                    || !org.bukkit.entity.Projectile.class.isAssignableFrom(type.getEntityClass())) {
+                throw new IllegalArgumentException("comportamento.distancia: projetil inválido '" + name
+                        + "' (ex.: ARROW, SNOWBALL, SMALL_FIREBALL, WIND_CHARGE)");
+            }
+            double speed = r.getDouble("velocidade", 1.6);
+            double range = r.getDouble("alcance", 16);
+            double interval = r.getDouble("intervalo", 2);
+            double damage = r.getDouble("dano", 0);
+            if (speed <= 0 || speed > 10 || range < 2 || range > 64 || interval < 0.25 || interval > 600
+                    || damage < 0 || damage > 1000) {
+                throw new IllegalArgumentException("comportamento.distancia: valores fora do limite "
+                        + "(velocidade 0-10, alcance 2-64, intervalo 0.25-600 s, dano 0-1000)");
+            }
+            ranged = new MobBehavior.Ranged(type, speed, range, interval, damage);
+        }
+        return new MobBehavior(s.getBoolean("passivo", false), tame, ranged, parseAbilities(s, MOB_TRIGGERS));
     }
 
     /** {@code animacoes:} papel (parado, andando, ataque, morte) -> nome da animação do modelo. */
@@ -371,7 +420,12 @@ public final class ItemLoader {
             if (min < 0 || max < min || max > 64) {
                 throw new NumberFormatException();
             }
-            return new DropSpec(String.valueOf(item).strip(), min, max);
+            double chance = raw.get("chance") == null ? 1.0 : Double.parseDouble(String.valueOf(raw.get("chance")));
+            if (chance <= 0 || chance > 1) {
+                throw new IllegalArgumentException("chance de drop inválida (use de 0 a 1, ex.: 0.25)");
+            }
+            boolean onlyPlayer = raw.get("so-jogador") != null && Boolean.parseBoolean(String.valueOf(raw.get("so-jogador")));
+            return new DropSpec(String.valueOf(item).strip(), min, max, chance, onlyPlayer);
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("quantidade de drop inválida '" + amount + "' (use 2 ou 1-3, até 64)");
         }
@@ -423,12 +477,21 @@ public final class ItemLoader {
 
     /** {@code habilidades:} lista de {gatilho, recarga, consumir, acoes: [...]}. */
     private static List<AbilitySpec> parseAbilities(ConfigurationSection s) {
+        return parseAbilities(s, TRIGGERS);
+    }
+
+    private static final Set<String> MOB_TRIGGERS = Set.of("atacar", "ferido", "periodica");
+
+    private static List<AbilitySpec> parseAbilities(ConfigurationSection s, Set<String> triggers) {
         List<AbilitySpec> abilities = new ArrayList<>();
         for (Map<?, ?> raw : s.getMapList("habilidades")) {
             String trigger = String.valueOf(raw.get("gatilho")).toLowerCase(Locale.ROOT);
-            if (!TRIGGERS.contains(trigger)) {
+            if (!triggers.contains(trigger)) {
                 throw new IllegalArgumentException("habilidade: gatilho inválido '" + trigger
-                        + "' (right_click, left_click, sneak_right_click ou hit)");
+                        + "' (use " + String.join(", ", new java.util.TreeSet<>(triggers)) + ")");
+            }
+            if (trigger.equals("periodica") && number(raw.get("recarga"), 0, "recarga") <= 0) {
+                throw new IllegalArgumentException("habilidade periodica: defina 'recarga' (segundos entre usos)");
             }
             double cooldown = number(raw.get("recarga"), 0, "recarga");
             if (cooldown < 0 || cooldown > 86400) {

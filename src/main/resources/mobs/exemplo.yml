@@ -20,6 +20,17 @@
 #   spawn: (opcional) spawn natural. Quando o jogo faria nascer o mob de "tipo", ele é trocado por este.
 #       chance: de 0 a 1 (padrão 0.1) | limite: máximo vivo por mundo (padrão 10)
 #       mundos: [world] e biomas: [plains, forest] (omitidos = qualquer)
+#   drops também aceitam chance: 0.25 (0 a 1) e so-jogador: true (só dropa se um jogador deu o golpe final).
+#   comportamento: (opcional)
+#       passivo: true            = nunca ataca ninguém
+#       domavel: {item: BONE, chance: 0.5}  = clique direito com o item doma o mob (o dono não o fere, ele o segue
+#                                  e não o ataca)
+#       distancia: {projetil: ARROW, velocidade: 1.6, alcance: 16, intervalo: 2, dano: 4}
+#                                  = atira no alvo à distância (projetil: ARROW, SNOWBALL, SMALL_FIREBALL, WIND_CHARGE...)
+#       habilidades: mesmas ações dos itens (efeito, curar, dano, raio, projetil, som, impulso, comando);
+#                    "em: jogador" vale para o próprio mob e "em: alvo" para quem ele enfrenta.
+#                    gatilho: atacar (ao ferir alguém) | ferido (ao ser ferido) | periodica (a cada "recarga"
+#                    segundos, enquanto tem alvo; a recarga é obrigatória)
 #
 # O mob não some por distância (persistente). Visual = o do mob vanilla (sem textura própria).
 
@@ -55,3 +66,25 @@ robo_geo:
   nome: "<aqua>Robô (GeckoLib)"
   modelo: robo_geo
   atributos: {max_health: 30}
+# --- Comportamento (0.15.0) ---
+esqueleto_mago:
+  tipo: SKELETON
+  nome: "<light_purple>Esqueleto Mago"
+  atributos: {max_health: 30}
+  comportamento:
+    distancia: {projetil: SMALL_FIREBALL, velocidade: 1.2, alcance: 20, intervalo: 3}
+    habilidades:
+      - gatilho: ferido
+        recarga: 8
+        acoes:
+          - {tipo: efeito, efeito: speed, duracao: 4, nivel: 2}
+  drops:
+    - {item: "cc:diamante_polido", quantidade: 1, chance: 0.3, so-jogador: true}
+
+lobo_manso:
+  tipo: WOLF
+  nome: "<yellow>Lobo Manso"
+  atributos: {max_health: 24}
+  comportamento:
+    passivo: true
+    domavel: {item: BONE, chance: 0.5}

@@ -102,6 +102,26 @@ zumbi_forte:
 
 `/cc invocar <id> [quantidade]` cria o mob onde você olha. Os mobs levam `creatorcore:mob` (PDC), são persistentes (não somem por distância) e substituem os drops vanilla pelos definidos (`drops-vanilla: true` mantém os dois).
 
+### Comportamento dos mobs (`comportamento:`)
+
+```yaml
+esqueleto_mago:
+  tipo: SKELETON
+  comportamento:
+    distancia: {projetil: SMALL_FIREBALL, velocidade: 1.2, alcance: 20, intervalo: 3}
+    habilidades:
+      - {gatilho: ferido, recarga: 8, acoes: [{tipo: efeito, efeito: speed, duracao: 4, nivel: 2}]}
+  drops:
+    - {item: "cc:diamante_polido", quantidade: 1, chance: 0.3, so-jogador: true}
+lobo_manso:
+  tipo: WOLF
+  comportamento: {passivo: true, domavel: {item: BONE, chance: 0.5}}
+```
+
+- `passivo`: nunca ataca. `domavel`: clique direito com o item doma; o dono não o fere, ele o segue e não o ataca.
+- `distancia`: atira no alvo (`ARROW`, `SNOWBALL`, `SMALL_FIREBALL`, `WIND_CHARGE`...).
+- `habilidades`: mesmas ações dos itens; gatilhos `atacar`, `ferido` e `periodica` (a cada `recarga` s com alvo).
+- Drops aceitam `chance` (0 a 1) e `so-jogador`; `chance` vale também nos blocos.
 ## Modelos do Blockbench
 
 Coloque projetos salvos **com as texturas embutidas** em `plugins/CreatorCore/models/<id>.bbmodel` e use `/cc recarregar`. O plugin converte para modelos do jogo, monta um pack próprio (pack da release + seus modelos) e o serve por HTTP embutido (`resourcepack.host.*` no `config.yml`; `address` deve ser um IP/domínio que os jogadores alcancem e a porta `25630` precisa estar liberada — `localhost` só serve para teste local).
@@ -157,3 +177,4 @@ O plugin consulta a última release de `KoZuuYT/CreatorCore` a cada 30 min, baix
 | 0.12.0 | Modelos GeckoLib/Bedrock (`.geo.json` + `.png`) e rotações não suportadas pelo jogo adaptadas automaticamente (cubos fatiados em células); `rotacao-modelo` nos mobs |
 | 0.13.0 | Animações dos modelos (Blockbench e GeckoLib/Bedrock): um display por osso, estados parado/andando/ataque/morte; `animacoes:` nos mobs |
 | 0.14.0 | Armaduras customizadas (`armadura:`) com textura própria no corpo, vindas de `armor/<nome>_1.png` e `_2.png`; documentação do `display` para itens 3D na mão |
+| 0.15.0 | Comportamento de mobs em YAML: passivo, domável, ataque à distância e habilidades (atacar, ferido, periodica); drops com chance e so-jogador |

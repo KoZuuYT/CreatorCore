@@ -89,6 +89,9 @@ public final class BlockListener implements Listener {
             return;
         }
         for (DropSpec drop : definition.drops()) {
+            if (drop.chance() < 1.0 && ThreadLocalRandom.current().nextDouble() >= drop.chance()) {
+                continue;
+            }
             int amount = ThreadLocalRandom.current().nextInt(drop.min(), drop.max() + 1);
             ItemStack stack = amount > 0 ? plugin.itemLoader().resolveStack(drop.item(), amount) : null;
             if (stack != null) {

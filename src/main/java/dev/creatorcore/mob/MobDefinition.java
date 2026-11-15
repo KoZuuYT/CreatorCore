@@ -35,7 +35,8 @@ public record MobDefinition(String id, EntityType entity, String name, Map<Attri
                             Map<EquipmentSlot, String> equipment, List<DropSpec> drops, boolean keepVanillaDrops,
                             int xp, boolean glowing, boolean silent, SpawnSpec spawn,
                             String model, double modelScale, double modelOffsetY,
-                            double modelYaw, Map<String, String> animations) implements Creation {
+                            double modelYaw, Map<String, String> animations,
+                            MobBehavior behavior) implements Creation {
 
     private static final MiniMessage MM = MiniMessage.miniMessage();
 
@@ -78,6 +79,7 @@ public record MobDefinition(String id, EntityType entity, String name, Map<Attri
             }
         });
         plugin.modelMobs().attach(result, this);
+        plugin.behaviors().track(result);
         return result;
     }
 }

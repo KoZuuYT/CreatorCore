@@ -30,6 +30,7 @@ public final class CreatorCorePlugin extends JavaPlugin {
     private dev.creatorcore.model.ModelManager models;
     private dev.creatorcore.pack.PackHost packHost;
     private dev.creatorcore.model.ModelMobs modelMobs;
+    private dev.creatorcore.mob.MobBehaviors behaviors;
 
     @Override
     public void onEnable() {
@@ -57,8 +58,11 @@ public final class CreatorCorePlugin extends JavaPlugin {
         plugins.registerEvents(new dev.creatorcore.mob.MobListener(this), this);
         plugins.registerEvents(new dev.creatorcore.item.AbilityListener(this), this);
         plugins.registerEvents(modelMobs, this);
+        behaviors = new dev.creatorcore.mob.MobBehaviors(this);
+        plugins.registerEvents(behaviors, this);
         packHost.rebuild();
         modelMobs.start();
+        behaviors.start();
         plugins.registerEvents(new Listener() {
             @EventHandler
             public void onJoin(PlayerJoinEvent event) {
@@ -85,6 +89,9 @@ public final class CreatorCorePlugin extends JavaPlugin {
         }
         if (modelMobs != null) {
             modelMobs.stop();
+        }
+        if (behaviors != null) {
+            behaviors.stop();
         }
         if (packHost != null) {
             packHost.stopServer();
@@ -116,6 +123,10 @@ public final class CreatorCorePlugin extends JavaPlugin {
 
     public dev.creatorcore.pack.PackHost packHost() {
         return packHost;
+    }
+
+    public dev.creatorcore.mob.MobBehaviors behaviors() {
+        return behaviors;
     }
 
     public dev.creatorcore.model.ModelMobs modelMobs() {

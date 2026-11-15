@@ -70,7 +70,12 @@ public final class MobListener implements Listener {
         if (!mob.keepVanillaDrops()) {
             event.getDrops().clear();
         }
+        boolean byPlayer = event.getEntity().getKiller() != null;
         for (DropSpec drop : mob.drops()) {
+            if (drop.onlyPlayer() && !byPlayer
+                    || drop.chance() < 1.0 && ThreadLocalRandom.current().nextDouble() >= drop.chance()) {
+                continue;
+            }
             int amount = ThreadLocalRandom.current().nextInt(drop.min(), drop.max() + 1);
             ItemStack stack = amount > 0 ? plugin.itemLoader().resolveStack(drop.item(), amount) : null;
             if (stack == null) {

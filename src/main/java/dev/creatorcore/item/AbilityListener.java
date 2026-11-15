@@ -81,7 +81,7 @@ public final class AbilityListener implements Listener {
             }
             Entity target = hit != null ? hit : lookedAt(player);
             for (AbilitySpec.Action action : ability.actions()) {
-                apply(player, target, action);
+                AbilityActions.apply(player, target, action);
             }
             if (ability.consume() && player.getGameMode() != GameMode.CREATIVE) {
                 stack.setAmount(stack.getAmount() - 1);
@@ -111,45 +111,5 @@ public final class AbilityListener implements Listener {
         RayTraceResult hit = player.getWorld().rayTraceEntities(player.getEyeLocation(),
                 player.getEyeLocation().getDirection(), 20, 0.3, e -> e != player && e instanceof LivingEntity);
         return hit == null ? null : hit.getHitEntity();
-    }
-
-    private void apply(Player player, Entity target, AbilitySpec.Action action) {
-        Entity subject = action.onTarget() ? target : player;
-        LivingEntity living = subject instanceof LivingEntity l ? l : null;
-        switch (action.type()) {
-            case "efeito" -> {
-                if (living != null) {
-                    living.addPotionEffect(new org.bukkit.potion.PotionEffect(action.potion(), action.ticks(),
-                            action.amplifier()));
-                }
-            }
-            case "curar" -> {
-                if (living != null) {
-                    var max = living.getAttribute(Attribute.MAX_HEALTH);
-                    living.setHealth(Math.min(max == null ? 20 : max.getValue(), living.getHealth() + action.value()));
-                }
-            }
-            case "dano" -> {
-                if (living != null) {
-                    living.damage(action.value(), player);
-                }
-            }
-            case "comando" -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(),
-                    action.text().replace("%jogador%", player.getName()));
-            case "projetil" -> {
-                var launched = player.launchProjectile(action.entity().getEntityClass().asSubclass(Projectile.class),
-                        player.getEyeLocation().getDirection().multiply(action.value()));
-                launched.setShooter(player);
-            }
-            case "som" -> player.getWorld().playSound(player.getLocation(), action.text().toLowerCase(Locale.ROOT),
-                    (float) action.value(), 1f);
-            case "raio" -> {
-                if (subject != null) {
-                    subject.getWorld().strikeLightning(subject.getLocation());
-                }
-            }
-            case "impulso" -> player.setVelocity(player.getLocation().getDirection().multiply(action.value()));
-            default -> { }
-        }
     }
 }
