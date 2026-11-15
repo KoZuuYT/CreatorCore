@@ -31,6 +31,13 @@
 #         impulso:  {tipo: impulso, valor: 1.2}  (empurra o jogador para onde olha)
 #         som:      {tipo: som, texto: entity.player.levelup, valor: 1}
 #         comando:  {tipo: comando, texto: "say %jogador% usou!"}  (roda no console; só o dono do servidor edita)
+#   armadura: {slot, textura, protecao, resistencia}  -> item vestível com textura própria no corpo
+#       slot: head | chest | legs | feet; textura: nome dos arquivos armor/<textura>_1.png (capacete,
+#       peitoral, botas) e armor/<textura>_2.png (calças), camadas humanoides 64x32 do Minecraft.
+#       protecao: pontos de armadura (0-30); resistencia: armor toughness (0-20).
+#       O ícone do item vem do material (ou de "modelo:"); o material é só o ícone, qualquer um serve.
+#   Itens com modelo 3D do Blockbench: o bloco "display" do projeto (thirdperson_righthand,
+#       firstperson_righthand, gui, ground...) controla o tamanho/posição na mão, no inventário e no chão.
 
 cajado_teste:
   material: STICK
@@ -101,3 +108,23 @@ golem_miniatura:
   nome: "<gold>Golem em Miniatura"
   lore: ["<gray>Item com modelo importado do Blockbench."]
   modelo: golem_teste
+
+capacete_rubi:
+  material: IRON_HELMET
+  nome: "<red>Capacete de Rubi"
+  armadura: {slot: head, textura: rubi, protecao: 3, resistencia: 1}
+
+peitoral_rubi:
+  material: IRON_CHESTPLATE
+  nome: "<red>Peitoral de Rubi"
+  armadura: {slot: chest, textura: rubi, protecao: 8, resistencia: 1}
+
+calca_rubi:
+  material: IRON_LEGGINGS
+  nome: "<red>Calça de Rubi"
+  armadura: {slot: legs, textura: rubi, protecao: 6, resistencia: 1}
+
+botas_rubi:
+  material: IRON_BOOTS
+  nome: "<red>Botas de Rubi"
+  armadura: {slot: feet, textura: rubi, protecao: 3, resistencia: 1}

@@ -160,6 +160,26 @@ def geo_example() -> None:
     print("OK: robo_geo.geo.json + robo_geo.png")
 
 
+def armor_example() -> None:
+    """armor/rubi_1.png (capacete, peitoral, botas) e rubi_2.png (calças): camadas humanoides 64x32."""
+    out = ROOT / "src" / "main" / "resources" / "armor"
+    out.mkdir(parents=True, exist_ok=True)
+    for layer, base in ((1, (200, 30, 60)), (2, (160, 20, 90))):
+        rng = random.Random(100 + layer)
+        image = Image.new("RGBA", (64, 32))
+        for y in range(32):
+            for x in range(64):
+                k = rng.randint(-25, 25)
+                image.putpixel((x, y), (max(0, min(255, base[0] + k)), max(0, min(255, base[1] + k // 2)),
+                                        max(0, min(255, base[2] + k)), 255))
+        for x in range(64):             # faixas escuras para o desenho ficar visível
+            for y in (7, 15, 23, 31):
+                image.putpixel((x, y), (60, 10, 20, 255))
+        image.save(out / f"rubi_{layer}.png")
+    print("OK: armor/rubi_1.png + rubi_2.png")
+
+
 if __name__ == "__main__":
     main()
     geo_example()
+    armor_example()

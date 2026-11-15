@@ -114,6 +114,20 @@ Coloque projetos salvos **com as texturas embutidas** em `plugins/CreatorCore/mo
 - **Frente do modelo:** Blockbench/Bedrock desenham a frente voltada para o norte; por isso o mob gira o modelo 180° (`rotacao-modelo`, padrão 180).
 - **Suportado:** cubos, UV por face, texturas PNG, `display` (bbmodel). **Não suportado** (ignorado com aviso): malhas, animações. Exemplos gerados: `golem_teste.bbmodel` e `robo_geo.geo.json` (`tools/models/build_example.py`).
 
+- **Itens na mão:** o bloco `display` do `.bbmodel` (`thirdperson_righthand`, `firstperson_righthand`, `gui`, `ground`, `head`...) define tamanho, posição e rotação do item na mão, no inventário e no chão; ajuste no Blockbench em *Display*.
+
+## Armaduras
+
+`armadura:` no item deixa o material vestível no `slot` (`head`, `chest`, `legs`, `feet`) com textura própria no corpo do jogador:
+
+```yaml
+capacete_rubi:
+  material: IRON_HELMET        # só o ícone; qualquer material serve
+  armadura: {slot: head, textura: rubi, protecao: 3, resistencia: 1}
+```
+
+A textura vem de `plugins/CreatorCore/armor/<textura>_1.png` (capacete, peitoral e botas) e `<textura>_2.png` (calças), as camadas humanoides de 64x32 do Minecraft. `protecao` (0-30) e `resistencia` (0-20) viram os atributos de armadura/dureza do slot; encantamentos, `atributos:` e `receita:` funcionam como em qualquer item. O pack próprio gera `equipment/<textura>.json` e as texturas sozinhos. Exemplo: conjunto `rubi` (`capacete_rubi`, `peitoral_rubi`, `calca_rubi`, `botas_rubi`).
+
 ## Resource pack
 
 - **Gerador:** `scripts\build-pack.ps1` (roda `tools/pack/build.py`, requer Python 3 + Pillow). Gera `resourcepack/` e `libs/CreatorCore-Pack.zip` (zip determinístico: o SHA-1 só muda se o conteúdo mudar). **Não edite `resourcepack/` à mão**: altere `MODELS` em `tools/pack/build.py`.
@@ -142,3 +156,4 @@ O plugin consulta a última release de `KoZuuYT/CreatorCore` a cada 30 min, baix
 | 0.11.0 | Importação de modelos do Blockbench (`.bbmodel`) para itens e mobs: pack próprio montado e servido pelo plugin (HTTP embutido) |
 | 0.12.0 | Modelos GeckoLib/Bedrock (`.geo.json` + `.png`) e rotações não suportadas pelo jogo adaptadas automaticamente (cubos fatiados em células); `rotacao-modelo` nos mobs |
 | 0.13.0 | Animações dos modelos (Blockbench e GeckoLib/Bedrock): um display por osso, estados parado/andando/ataque/morte; `animacoes:` nos mobs |
+| 0.14.0 | Armaduras customizadas (`armadura:`) com textura própria no corpo, vindas de `armor/<nome>_1.png` e `_2.png`; documentação do `display` para itens 3D na mão |

@@ -27,7 +27,8 @@ import org.bukkit.persistence.PersistentDataType;
 public record ItemDefinition(String id, Material material, String name, List<String> lore,
                              List<AttributeSpec> attributes, Map<Enchantment, Integer> enchantments,
                              boolean unbreakable, boolean glint, String model, RecipeSpec recipe,
-                             java.util.List<CookSpec> cooking, java.util.List<AbilitySpec> abilities) implements ItemSource {
+                             java.util.List<CookSpec> cooking, java.util.List<AbilitySpec> abilities,
+                             ArmorSpec armor) implements ItemSource {
 
     private static final MiniMessage MM = MiniMessage.miniMessage();
 
@@ -52,6 +53,26 @@ public record ItemDefinition(String id, Material material, String name, List<Str
             NamespacedKey key = new NamespacedKey(plugin, id + "_" + index++);
             meta.addAttributeModifier(spec.attribute(),
                     new AttributeModifier(key, spec.amount(), spec.operation(), spec.slot()));
+        }
+        if (armor != null) {
+            var equippable = meta.getEquippable();
+            equippable.setSlot(armor.slot());
+            equippable.setModel(new NamespacedKey(dev.creatorcore.model.ModelManager.NAMESPACE, armor.texture()));
+            meta.setEquippable(equippable);
+            var group = switch (armor.slot()) {
+                case HEAD -> org.bukkit.inventory.EquipmentSlotGroup.HEAD;
+                case CHEST -> org.bukkit.inventory.EquipmentSlotGroup.CHEST;
+                case LEGS -> org.bukkit.inventory.EquipmentSlotGroup.LEGS;
+                default -> org.bukkit.inventory.EquipmentSlotGroup.FEET;
+            };
+            if (armor.defense() != 0) {
+                meta.addAttributeModifier(org.bukkit.attribute.Attribute.ARMOR, new AttributeModifier(
+                        new NamespacedKey(plugin, id + "_armor"), armor.defense(), AttributeModifier.Operation.ADD_NUMBER, group));
+            }
+            if (armor.toughness() != 0) {
+                meta.addAttributeModifier(org.bukkit.attribute.Attribute.ARMOR_TOUGHNESS, new AttributeModifier(
+                        new NamespacedKey(plugin, id + "_toughness"), armor.toughness(), AttributeModifier.Operation.ADD_NUMBER, group));
+            }
         }
         enchantments.forEach((enchantment, level) -> meta.addEnchant(enchantment, level, true));
         if (unbreakable) {

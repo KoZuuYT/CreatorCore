@@ -75,6 +75,10 @@ public final class ItemLoader {
             plugin.saveResource("models/robo_geo.png", false);
             plugin.saveResource("models/robo_geo.animation.json", false);
         }
+        if (!new File(plugin.getDataFolder(), "armor").exists()) {
+            plugin.saveResource("armor/rubi_1.png", false);
+            plugin.saveResource("armor/rubi_2.png", false);
+        }
         if (!new File(plugin.getDataFolder(), "mobs").exists()) {
             plugin.saveResource("mobs/exemplo.yml", false);
         }
@@ -384,7 +388,33 @@ public final class ItemLoader {
         return new ItemDefinition(id, material, s.getString("nome", ""), List.copyOf(s.getStringList("lore")),
                 parseAttributes(s), parseEnchantments(s.getConfigurationSection("encantamentos")),
                 s.getBoolean("inquebravel", false), s.getBoolean("brilho", false), parseModel(s), parseRecipe(s), parseCooking(s),
-                parseAbilities(s));
+                parseAbilities(s), parseArmor(s));
+    }
+
+    /** {@code armadura:} {slot: head|chest|legs|feet, textura, protecao, resistencia}. */
+    private ArmorSpec parseArmor(ConfigurationSection s) {
+        ConfigurationSection a = s.getConfigurationSection("armadura");
+        if (a == null) {
+            return null;
+        }
+        org.bukkit.inventory.EquipmentSlot slot = switch (a.getString("slot", "").toLowerCase(Locale.ROOT)) {
+            case "head" -> org.bukkit.inventory.EquipmentSlot.HEAD;
+            case "chest" -> org.bukkit.inventory.EquipmentSlot.CHEST;
+            case "legs" -> org.bukkit.inventory.EquipmentSlot.LEGS;
+            case "feet" -> org.bukkit.inventory.EquipmentSlot.FEET;
+            default -> throw new IllegalArgumentException("armadura: 'slot' deve ser head, chest, legs ou feet");
+        };
+        String texture = a.getString("textura", "");
+        if (!plugin.models().hasArmor(texture)) {
+            throw new IllegalArgumentException("armadura: textura '" + texture
+                    + "' não encontrada (faltam armor/" + texture + "_1.png e armor/" + texture + "_2.png)");
+        }
+        double defense = a.getDouble("protecao", 0);
+        double toughness = a.getDouble("resistencia", 0);
+        if (defense < 0 || defense > 30 || toughness < 0 || toughness > 20) {
+            throw new IllegalArgumentException("armadura: protecao (0-30) ou resistencia (0-20) inválidas");
+        }
+        return new ArmorSpec(slot, texture, defense, toughness);
     }
 
     private static final Set<String> TRIGGERS = Set.of("right_click", "left_click", "sneak_right_click", "hit");

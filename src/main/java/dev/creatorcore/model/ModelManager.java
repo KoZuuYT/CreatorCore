@@ -86,7 +86,45 @@ public final class ModelManager {
             }
         }
         models = loaded;
+        loadArmor();
         return loaded.size();
+    }
+
+    // ── Texturas de armadura: armor/<nome>_1.png (corpo) e _2.png (calças) ──
+
+    private volatile Map<String, byte[][]> armors = Map.of();
+
+    public boolean hasArmor(String name) {
+        return name != null && armors.containsKey(name);
+    }
+
+    private void loadArmor() {
+        File dir = new File(plugin.getDataFolder(), "armor");
+        dir.mkdirs();
+        Map<String, byte[][]> loaded = new LinkedHashMap<>();
+        File[] files = dir.listFiles((d, n) -> n.toLowerCase(Locale.ROOT).endsWith("_1.png"));
+        if (files != null) {
+            Arrays.sort(files, Comparator.comparing(File::getName));
+            for (File body : files) {
+                String name = body.getName().substring(0, body.getName().length() - "_1.png".length()).toLowerCase(Locale.ROOT);
+                File legs = new File(dir, body.getName().substring(0, body.getName().length() - "_1.png".length()) + "_2.png");
+                try {
+                    if (!CreationRegistry.isValidId(name)) {
+                        throw new IllegalArgumentException("nome inválido (use minúsculas, números e _)");
+                    }
+                    if (!legs.isFile()) {
+                        throw new IllegalArgumentException("falta " + legs.getName());
+                    }
+                    if (body.length() > 1024 * 1024 || legs.length() > 1024 * 1024) {
+                        throw new IllegalArgumentException("imagem grande demais (máx. 1 MB)");
+                    }
+                    loaded.put(name, new byte[][] {Files.readAllBytes(body.toPath()), Files.readAllBytes(legs.toPath())});
+                } catch (IOException | RuntimeException e) {
+                    plugin.getLogger().warning("armor/" + body.getName() + " ignorado (" + e.getMessage() + ").");
+                }
+            }
+        }
+        armors = loaded;
     }
 
     /** Arquivos para somar ao resource pack: caminho no zip -> conteúdo. */
@@ -116,6 +154,14 @@ public final class ModelManager {
             model.textures().forEach((name, png) ->
                     entries.put("assets/" + NAMESPACE + "/textures/item/" + name + ".png", png));
         }
+        armors.forEach((name, png) -> {
+            entries.put("assets/" + NAMESPACE + "/equipment/" + name + ".json",
+                    ("{\"layers\":{\"humanoid\":[{\"texture\":\"" + NAMESPACE + ":" + name
+                            + "\"}],\"humanoid_leggings\":[{\"texture\":\"" + NAMESPACE + ":" + name + "\"}]}}")
+                            .getBytes(StandardCharsets.UTF_8));
+            entries.put("assets/" + NAMESPACE + "/textures/entity/equipment/humanoid/" + name + ".png", png[0]);
+            entries.put("assets/" + NAMESPACE + "/textures/entity/equipment/humanoid_leggings/" + name + ".png", png[1]);
+        });
         return entries;
     }
 }
