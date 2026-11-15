@@ -7,6 +7,7 @@ import dev.creatorcore.block.ToolInfo;
 import dev.creatorcore.mob.MobBehavior;
 import dev.creatorcore.mob.MobDefinition;
 import dev.creatorcore.mob.SpawnSpec;
+import dev.creatorcore.registry.Creation;
 import dev.creatorcore.registry.CreationRegistry;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
@@ -105,9 +106,19 @@ public final class ItemLoader {
         registry.clear(CreationType.MOB);
         unregisterRecipes();
         plugin.models().load(); // antes de tudo: os itens consultam os modelos importados
-        int items = loadFolder("items", CreationType.ITEM);
-        int blocks = loadFolder("blocks", CreationType.BLOCK);
-        int mobs = loadFolder("mobs", CreationType.MOB);
+        plugin.profiles().resetOwners();
+        int items = 0;
+        int blocks = 0;
+        int mobs = 0;
+        // Pastas soltas (formato antigo) primeiro; depois cada perfil (perfis/<nome>/items|blocks|mobs).
+        items += loadFolder(new File(plugin.getDataFolder(), "items"), CreationType.ITEM, null);
+        blocks += loadFolder(new File(plugin.getDataFolder(), "blocks"), CreationType.BLOCK, null);
+        mobs += loadFolder(new File(plugin.getDataFolder(), "mobs"), CreationType.MOB, null);
+        for (String profile : plugin.profiles().names()) {
+            items += loadFolder(plugin.profiles().dir(profile, CreationType.ITEM), CreationType.ITEM, profile);
+            blocks += loadFolder(plugin.profiles().dir(profile, CreationType.BLOCK), CreationType.BLOCK, profile);
+            mobs += loadFolder(plugin.profiles().dir(profile, CreationType.MOB), CreationType.MOB, profile);
+        }
         plugin.blocks().rebuild(registry);
         // Receitas e drops só depois de tudo carregado, pois um ingrediente pode ser outro item/bloco (cc:<id>).
         int recipes = 0;
@@ -153,8 +164,7 @@ public final class ItemLoader {
     }
 
     /** Lê todos os .yml de uma pasta de definições. @return quantas criações foram registradas */
-    private int loadFolder(String folder, CreationType type) {
-        File dir = new File(plugin.getDataFolder(), folder);
+    private int loadFolder(File dir, CreationType type, String profile) {
         File[] files = dir.listFiles((d, name) -> name.toLowerCase(Locale.ROOT).endsWith(".yml"));
         if (files == null) {
             return 0;
@@ -166,7 +176,7 @@ public final class ItemLoader {
             for (String id : yaml.getKeys(false)) {
                 ConfigurationSection section = yaml.getConfigurationSection(id);
                 if (section == null) {
-                    warn(file, id, "não é uma seção");
+                    warn(file, id, "não é uma seção", profile);
                     continue;
                 }
                 try {
@@ -178,9 +188,12 @@ public final class ItemLoader {
                         case BLOCK -> parseBlock(id, section);
                         case MOB -> parseMob(id, section);
                     });
+                    if (profile != null) {
+                        plugin.profiles().noteOwner(type, id, profile);
+                    }
                     loaded++;
                 } catch (IllegalArgumentException e) {
-                    warn(file, id, e.getMessage());
+                    warn(file, id, e.getMessage(), profile);
                 }
             }
         }
@@ -256,7 +269,8 @@ public final class ItemLoader {
             drops.add(parseDrop(raw));
         }
         return new BlockDefinition(id, s.getString("nome", ""), List.copyOf(s.getStringList("lore")), model, state,
-                hardness, tool, tier, requiresTool, List.copyOf(drops), parseRecipe(s), parseCooking(s));
+                hardness, tool, tier, requiresTool, List.copyOf(drops), parseRecipe(s), parseCooking(s),
+                dev.creatorcore.block.BlockExtras.parse(s));
     }
 
     // ── Mobs ────────────────────────────────────────────────────
@@ -310,7 +324,8 @@ public final class ItemLoader {
                 List.copyOf(drops), s.getBoolean("drops-vanilla", false), s.getInt("xp", -1),
                 s.getBoolean("brilho", false), s.getBoolean("silencioso", false), parseSpawn(s),
                 parseModel(s), s.getDouble("escala-modelo", 1.0), s.getDouble("deslocamento-y", 0.0),
-                s.getDouble("rotacao-modelo", 180.0), parseAnimations(s), parseBehavior(s));
+                s.getDouble("rotacao-modelo", 180.0), parseAnimations(s), parseBehavior(s),
+                dev.creatorcore.mob.MobExtras.parse(s));
     }
 
     /** {@code comportamento:} passivo, domavel {item, chance}, distancia {projetil, velocidade, alcance, intervalo, dano}, habilidades. */
@@ -439,10 +454,58 @@ public final class ItemLoader {
         if (material == null || !material.isItem() || material.isAir()) {
             throw new IllegalArgumentException("material inválido '" + materialName + "'");
         }
+        ItemExtras extras = ItemExtras.parse(s, material);
+        ArmorSpec armor = parseArmor(s);
+        if (armor != null && extras.hat()) {
+            throw new IllegalArgumentException("'cabeca' não vale para item com 'armadura'");
+        }
         return new ItemDefinition(id, material, s.getString("nome", ""), List.copyOf(s.getStringList("lore")),
                 parseAttributes(s), parseEnchantments(s.getConfigurationSection("encantamentos")),
                 s.getBoolean("inquebravel", false), s.getBoolean("brilho", false), parseModel(s), parseRecipe(s), parseCooking(s),
-                parseAbilities(s), parseArmor(s));
+                parseAbilities(s), armor, extras);
+    }
+
+    /**
+     * Valida uma definição ainda não salva (usada pelo editor). Não registra nada.
+     *
+     * @return {@code null} se estiver tudo certo, ou o motivo da recusa em português
+     */
+    public String validate(CreationType type, String id, ConfigurationSection s) {
+        try {
+            if (!CreationRegistry.isValidId(id)) {
+                return "id inválido (use minúsculas, números e _)";
+            }
+            Creation creation = switch (type) {
+                case ITEM -> parse(id, s);
+                case BLOCK -> parseBlock(id, s);
+                case MOB -> parseMob(id, s);
+            };
+            if (creation instanceof ItemSource item) {
+                if (item.recipe() != null) {
+                    buildRecipe(item);
+                }
+                for (CookSpec spec : item.cooking()) {
+                    choice(spec.input());
+                }
+            }
+            List<DropSpec> drops = creation instanceof BlockDefinition b ? b.drops()
+                    : creation instanceof MobDefinition m ? m.drops() : List.of();
+            for (DropSpec drop : drops) {
+                if (resolveStack(drop.item(), 1) == null) {
+                    return "o drop '" + drop.item() + "' não existe";
+                }
+            }
+            if (creation instanceof MobDefinition mob) {
+                for (String equip : mob.equipment().values()) {
+                    if (resolveStack(equip, 1) == null) {
+                        return "o equipamento '" + equip + "' não existe";
+                    }
+                }
+            }
+            return null;
+        } catch (IllegalArgumentException | NullPointerException | ClassCastException e) {
+            return e.getMessage() == null ? "definição inválida" : e.getMessage();
+        }
     }
 
     /** {@code armadura:} {slot: head|chest|legs|feet, textura, protecao, resistencia}. */
@@ -809,8 +872,8 @@ public final class ItemLoader {
         return new ItemStack(material, Math.max(1, amount));
     }
 
-    private void warn(File file, String id, String reason) {
-        plugin.getLogger().warning(file.getParentFile().getName() + "/" + file.getName() + ": '" + id
+    private void warn(File file, String id, String reason, String profile) {
+        plugin.getLogger().warning((profile == null ? "" : "perfil " + profile + ": ") + file.getParentFile().getName() + "/" + file.getName() + ": '" + id
                 + "' ignorado (" + reason + ").");
     }
 }

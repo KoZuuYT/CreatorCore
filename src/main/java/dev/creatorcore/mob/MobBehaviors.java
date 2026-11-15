@@ -64,26 +64,87 @@ public final class MobBehaviors implements Listener {
             task.cancel();
         }
         tracked.clear();
+        bars.values().forEach(org.bukkit.boss.BossBar::removeAll);
+        bars.clear();
     }
 
-    private MobBehavior behaviorOf(Entity entity) {
+    private MobDefinition definitionOf(Entity entity) {
         String id = entity.getPersistentDataContainer().get(plugin.mobKey(), PersistentDataType.STRING);
         if (id == null) {
             return null;
         }
         var found = plugin.registry().get(CreationType.MOB, id);
-        return found.isPresent() && found.get() instanceof MobDefinition def ? def.behavior() : null;
+        return found.isPresent() && found.get() instanceof MobDefinition def ? def : null;
     }
 
-    /** Passa a acompanhar o mob se o comportamento dele exigir verificação periódica. */
+    private MobBehavior behaviorOf(Entity entity) {
+        MobDefinition def = definitionOf(entity);
+        return def == null ? null : def.behavior();
+    }
+
+    /** Passa a acompanhar o mob se ele exigir verificação periódica (comportamento ou barra de chefe). */
     public void track(LivingEntity entity) {
-        MobBehavior b = behaviorOf(entity);
+        MobDefinition def = definitionOf(entity);
+        if (def == null) {
+            return;
+        }
+        if (def.extras().boss() != null) {
+            tracked.put(entity.getUniqueId(), entity);
+        }
+        MobBehavior b = def.behavior();
         if (b == null || !(entity instanceof Mob)) {
             return;
         }
         boolean periodic = b.abilities().stream().anyMatch(a -> a.trigger().equals("periodica"));
         if (b.ranged() != null || periodic || b.tame() != null) {
             tracked.put(entity.getUniqueId(), entity);
+        }
+    }
+
+    // ── Dano: imunidades e som ──
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onAnyDamage(org.bukkit.event.entity.EntityDamageEvent event) {
+        MobDefinition def = definitionOf(event.getEntity());
+        if (def != null && def.extras().immune().contains(event.getCause())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onHurtSound(org.bukkit.event.entity.EntityDamageEvent event) {
+        MobDefinition def = definitionOf(event.getEntity());
+        if (def != null && def.extras().hurtSound() != null && event.getFinalDamage() > 0) {
+            event.getEntity().getWorld().playSound(event.getEntity().getLocation(), def.extras().hurtSound(), 1f, 1f);
+        }
+    }
+
+    // ── Barra de chefe ──
+
+    private final Map<UUID, org.bukkit.boss.BossBar> bars = new HashMap<>();
+
+    private void updateBar(LivingEntity mob, MobExtras.Boss boss) {
+        var bar = bars.computeIfAbsent(mob.getUniqueId(), id -> {
+            var title = mob.customName() == null ? net.kyori.adventure.text.Component.text(mob.getType().name()) : mob.customName();
+            return Bukkit.createBossBar(net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection()
+                    .serialize(title), boss.color(), boss.style());
+        });
+        var max = mob.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+        bar.setProgress(Math.max(0, Math.min(1, mob.getHealth() / (max == null ? 20 : max.getValue()))));
+        for (Player player : mob.getWorld().getPlayers()) {
+            boolean near = player.getLocation().distanceSquared(mob.getLocation()) <= boss.radius() * boss.radius();
+            if (near) {
+                bar.addPlayer(player);
+            } else {
+                bar.removePlayer(player);
+            }
+        }
+    }
+
+    private void dropBar(UUID id) {
+        var bar = bars.remove(id);
+        if (bar != null) {
+            bar.removeAll();
         }
     }
 
@@ -217,14 +278,23 @@ public final class MobBehaviors implements Listener {
         while (it.hasNext()) {
             var entry = it.next();
             LivingEntity mob = entry.getValue();
-            if (!mob.isValid() || mob.isDead() || !(mob instanceof Mob m)) {
+            if (!mob.isValid() || mob.isDead()) {
                 it.remove();
+                dropBar(entry.getKey());
                 next.keySet().removeIf(k -> k.startsWith(entry.getKey().toString()));
                 continue;
             }
-            MobBehavior b = behaviorOf(mob);
-            if (b == null) {
+            MobDefinition def = definitionOf(mob);
+            if (def == null) {
                 it.remove();
+                dropBar(entry.getKey());
+                continue;
+            }
+            if (def.extras().boss() != null) {
+                updateBar(mob, def.extras().boss());
+            }
+            MobBehavior b = def.behavior();
+            if (b == null || !(mob instanceof Mob m)) {
                 continue;
             }
             LivingEntity target = m.getTarget();

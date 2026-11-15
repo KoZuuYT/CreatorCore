@@ -39,12 +39,17 @@ public final class CreatorCommand implements TabExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        String sub = args.length == 0 ? "versao" : args[0].toLowerCase(Locale.ROOT);
+        String sub = args.length == 0
+                ? (sender instanceof Player && sender.hasPermission(PERM) ? "hub" : "versao")
+                : args[0].toLowerCase(Locale.ROOT);
         if (!sub.equals("versao") && !sub.equals("pacote") && !sender.hasPermission(PERM)) {
             send(sender, "<red>Você não tem permissão.");
             return true;
         }
         switch (sub) {
+            case "hub" -> plugin.hub().openHub((Player) sender);
+            case "ajuda" -> plugin.hub().sendHelp(sender);
+            case "perfil" -> profile(sender, args);
             case "versao" -> version(sender);
             case "atualizar" -> plugin.updater().checkNow(sender);
             case "pacote" -> {
@@ -58,9 +63,7 @@ public final class CreatorCommand implements TabExecutor {
             }
             case "listar" -> list(sender);
             case "recarregar" -> {
-                var loaded = plugin.itemLoader().load();
-                plugin.packHost().rebuildAndRefresh();
-                plugin.modelMobs().refreshAll();
+                var loaded = plugin.reloadAll();
                 send(sender, "<green>Recarregado: <white><p0></white> item(ns), <white><p1></white> bloco(s), "
                                 + "<white><p2></white> mob(s) e <white><p3></white> receita(s).",
                         String.valueOf(loaded.items()), String.valueOf(loaded.blocks()), String.valueOf(loaded.mobs()),
@@ -75,9 +78,70 @@ public final class CreatorCommand implements TabExecutor {
             }
             case "dar" -> give(sender, args);
             case "invocar" -> summon(sender, args);
-            default -> send(sender, "<gray>Uso: <white>/cc [versao|menu|pacote|atualizar|listar|recarregar|dar <id> [jogador] [quantidade]|invocar <id> [quantidade]]");
+            default -> send(sender, "<gray>Uso: <white>/cc [versao|ajuda|menu|perfil|pacote|atualizar|listar|recarregar|dar <id> [jogador] [quantidade]|invocar <id> [quantidade]]");
         }
         return true;
+    }
+
+    /** {@code /cc perfil [listar|criar|usar|exportar|importar|importar-arquivo|apagar]}. */
+    private void profile(CommandSender sender, String[] args) {
+        var profiles = plugin.profiles();
+        String action = args.length < 2 ? "" : args[1].toLowerCase(Locale.ROOT);
+        String name = args.length < 3 ? null : args[2].toLowerCase(Locale.ROOT);
+        switch (action) {
+            case "" -> {
+                if (sender instanceof Player player) {
+                    plugin.hub().openProfiles(player);
+                } else {
+                    send(sender, "<gray>Perfil atual: <white><p0></white>. Perfis: <white><p1>", profiles.active(), String.join(", ", profiles.names()));
+                }
+            }
+            case "listar" -> send(sender, "<gray>Perfil atual: <white><p0></white>. Perfis: <white><p1>", profiles.active(),
+                    String.join(", ", profiles.names()));
+            case "criar" -> {
+                if (name == null) {
+                    send(sender, "<gray>Uso: <white>/cc perfil criar <nome>");
+                } else if (!profiles.create(name)) {
+                    send(sender, "<red>Nome inválido (minúsculas, números e _) ou perfil já existe.");
+                } else {
+                    profiles.setActive(name);
+                    send(sender, "<green>Perfil <white><p0></white> criado e em uso.", name);
+                }
+            }
+            case "usar" -> {
+                if (name == null || !profiles.setActive(name)) {
+                    send(sender, "<red>Perfil inexistente. Veja <white>/cc perfil listar</white>.");
+                } else {
+                    send(sender, "<green>Agora você usa o perfil <white><p0></white>.", name);
+                }
+            }
+            case "exportar" -> plugin.hub().exportProfile(sender, name == null ? profiles.active() : name);
+            case "importar" -> {
+                if (args.length < 3) {
+                    send(sender, "<gray>Uso: <white>/cc perfil importar <código> [nome]");
+                } else {
+                    plugin.hub().importCode(sender, args[2], args.length > 3 ? args[3] : null);
+                }
+            }
+            case "importar-arquivo" -> {
+                if (args.length < 3) {
+                    send(sender, "<gray>Uso: <white>/cc perfil importar-arquivo <nome> [novo-nome]");
+                } else {
+                    plugin.hub().importFile(sender, args[2], args.length > 3 ? args[3] : null);
+                }
+            }
+            case "apagar" -> {
+                if (name == null || args.length < 4 || !args[3].equalsIgnoreCase("confirmar")) {
+                    send(sender, "<gray>Uso: <white>/cc perfil apagar <nome> confirmar</white> (vai para perfis/_lixeira).");
+                } else if (profiles.delete(name)) {
+                    plugin.reloadAll();
+                    send(sender, "<gray>Perfil <white><p0></white> movido para perfis/_lixeira.", name);
+                } else {
+                    send(sender, "<red>Não deu: o perfil não existe ou é o único.");
+                }
+            }
+            default -> send(sender, "<gray>Uso: <white>/cc perfil [listar|criar <n>|usar <n>|exportar [n]|importar <código> [nome]|importar-arquivo <arquivo> [nome]|apagar <n> confirmar]");
+        }
     }
 
     private void version(CommandSender sender) {
@@ -202,10 +266,24 @@ public final class CreatorCommand implements TabExecutor {
     public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
         boolean admin = sender.hasPermission(PERM);
         if (args.length == 1) {
-            return admin ? List.of("versao", "menu", "pacote", "atualizar", "listar", "recarregar", "dar", "invocar")
+            return admin ? List.of("versao", "ajuda", "menu", "perfil", "pacote", "atualizar", "listar", "recarregar", "dar", "invocar")
                     : List.of("versao", "pacote");
         }
         String typed = args[args.length - 1].toLowerCase(Locale.ROOT);
+        if (admin && args[0].equalsIgnoreCase("perfil")) {
+            if (args.length == 2) {
+                return List.of("listar", "criar", "usar", "exportar", "importar", "importar-arquivo", "apagar").stream()
+                        .filter(s -> s.startsWith(typed)).toList();
+            }
+            if (args.length == 3 && List.of("usar", "exportar", "apagar").contains(args[1].toLowerCase(Locale.ROOT))) {
+                return plugin.profiles().names().stream().filter(n -> n.startsWith(typed)).toList();
+            }
+            if (args.length == 3 && args[1].equalsIgnoreCase("importar-arquivo")) {
+                String[] files = plugin.profiles().exportDir().list((d, n) -> n.endsWith(".cccode"));
+                return files == null ? List.of() : java.util.Arrays.stream(files).filter(n -> n.startsWith(typed)).toList();
+            }
+            return List.of();
+        }
         if (admin && args[0].equalsIgnoreCase("invocar") && args.length == 2) {
             return plugin.registry().all(CreationType.MOB).stream().map(Creation::id)
                     .filter(id -> id.startsWith(typed)).toList();

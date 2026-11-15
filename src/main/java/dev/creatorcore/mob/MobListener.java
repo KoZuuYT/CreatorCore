@@ -91,5 +91,18 @@ public final class MobListener implements Listener {
         if (mob.xp() >= 0) {
             event.setDroppedExp(mob.xp());
         }
+        MobExtras extras = mob.extras();
+        var where = event.getEntity().getLocation();
+        if (extras.deathSound() != null) {
+            where.getWorld().playSound(where, extras.deathSound(), 1f, 1f);
+        }
+        var killer = event.getEntity().getKiller();
+        for (String command : extras.deathCommands()) {
+            String line = command.replace("%jogador%", killer == null ? "" : killer.getName())
+                    .replace("%x%", String.valueOf(where.getBlockX())).replace("%y%", String.valueOf(where.getBlockY()))
+                    .replace("%z%", String.valueOf(where.getBlockZ()));
+            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(),
+                    line.startsWith("/") ? line.substring(1) : line);
+        }
     }
 }

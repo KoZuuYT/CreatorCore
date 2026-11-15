@@ -16,6 +16,11 @@
 #
 # Limitações: o tempo de quebra ignora Pressa/Fadiga e debaixo d'água; pistões não movem estes blocos;
 # o som é o de madeira do note block.
+#   Extras (0.17.0), todos opcionais:
+#       xp: experiência ao quebrar | fortuna: true (Fortuna multiplica os drops) | resiste-explosao: true
+#       som-colocar / som-quebrar: ex. block.stone.break | particula: FLAME + particula-quantidade
+#       comandos-colocar / comandos-quebrar: lista de comandos do console (%jogador% %x% %y% %z%)
+#       cozimento: igual aos itens
 
 minerio_teste:
   nome: "<aqua>Minério de Teste"

@@ -37,6 +37,18 @@ Hub de criações customizadas para o Minecraft vanilla (itens, mobs, blocos e m
 
 `/cc menu` abre um inventário com abas Itens, Blocos e Mobs (permissão `creatorcore.admin`). Clique para pegar 1 (Shift: pilha cheia) ou invocar 1 mob (Shift: 5) onde você mira.
 
+## Menu e perfis (0.17.0)
+
+`/cc` (sem argumentos, para quem tem `creatorcore.admin`) abre o **menu principal**: criar item, bloco ou mob; editar o que já existe; catálogo; perfis; exportar/importar; pacote; recarregar; atualizar; e um resumo de todas as funcionalidades (`/cc ajuda`).
+
+**Editor.** Cada criação é editada campo a campo em um inventário: o botão mostra o valor atual e uma explicação. Clique esquerdo altera (liga/desliga, troca a opção, ou pergunta o valor no chat, onde `cancelar` desiste); clique direito limpa. Listas (lore, drops, atributos, habilidades, comandos...) abrem uma tela própria para adicionar e remover entradas, e a receita é montada numa grade 3x3 (itens do CreatorCore viram `cc:<id>`). **Salvar** valida tudo antes de gravar e diz o motivo se algo estiver errado; só então o arquivo é gravado e o jogo recarrega.
+
+Formatos digitados no chat: habilidade `gatilho recarga | ação ; ação` (ex.: `right_click 5 | efeito speed 10 2 ; som entity.player.levelup`), drop `item quantidade [chance] [so-jogador]` (ex.: `cc:rubi 1-3 0.5`), atributo `atributo valor [operacao] [slot]`, cozimento `tipo entrada [xp] [tempo] [quantidade]`.
+
+**Perfis.** Tudo o que o editor cria fica no perfil ativo, em `plugins/CreatorCore/perfis/<nome>/{items,blocks,mobs}/<id>.yml` (as pastas antigas `items/`, `blocks/` e `mobs/` continuam sendo lidas). Comandos: `/cc perfil` (tela de perfis), `listar`, `criar <nome>`, `usar <nome>`, `exportar [nome]`, `importar <código> [nome]`, `importar-arquivo <arquivo> [nome]`, `apagar <nome> confirmar` (vai para `perfis/_lixeira`). **Exportar** gera um código `CC1:...` (YAML compactado em gzip + Base64) com um botão para copiar no chat e uma cópia em `perfis/_exportados/<nome>.cccode`; **importar** cria um perfil novo (ids que já existem no servidor são ignorados e avisados). Modelos (`models/`) e texturas de armadura (`armor/`) não vão dentro do código: o aviso lista quais arquivos levar junto.
+
+**Opções extras (0.17.0).** Itens: `max-pilha`, `raridade`, `durabilidade`, `esconder-tooltip`, `esconder`, `comida`, `resistente-fogo`, `encantabilidade`, `cabeca`. Blocos: `xp`, `fortuna`, `resiste-explosao`, `som-colocar`, `som-quebrar`, `particula`, `comandos-colocar`, `comandos-quebrar`. Mobs: `filhote`, `sem-ia`, `sem-gravidade`, `invulneravel`, `pegar-itens`, `nome-visivel`, `imune-a`, `efeitos`, `som-ferido`, `som-morte`, `comandos-morte`, `barra-chefe`. Detalhes nos arquivos `exemplo.yml`.
+
 ## Definindo itens
 
 Em `plugins/CreatorCore/items/*.yml`, cada chave de nível superior é o id do item (minúsculas, números e `_`):
@@ -183,3 +195,4 @@ O plugin consulta a última release de `KoZuuYT/CreatorCore` a cada 30 min, baix
 | 0.14.0 | Armaduras customizadas (`armadura:`) com textura própria no corpo, vindas de `armor/<nome>_1.png` e `_2.png`; documentação do `display` para itens 3D na mão |
 | 0.15.0 | Comportamento de mobs em YAML: passivo, domável, ataque à distância e habilidades (atacar, ferido, periodica); drops com chance e so-jogador |
 | 0.16.0 | Menu gráfico `/cc menu`: abas Itens, Blocos e Mobs com paginação; clique pega o item ou invoca o mob (Shift = pilha cheia / 5 mobs) |
+| 0.17.0 | Menu principal `/cc` com editor visual de itens, blocos e mobs; perfis de criações com exportar/importar por código; dezenas de opções novas (comida, durabilidade, barra de chefe, imunidades, sons, partículas, comandos...) |

@@ -28,7 +28,8 @@ import org.bukkit.persistence.PersistentDataType;
  */
 public record BlockDefinition(String id, String name, List<String> lore, String model, int state, double hardness,
                               ToolInfo.Type tool, int tier, boolean requiresTool, List<DropSpec> drops,
-                              RecipeSpec recipe, List<dev.creatorcore.item.CookSpec> cooking) implements ItemSource {
+                              RecipeSpec recipe, List<dev.creatorcore.item.CookSpec> cooking,
+                              BlockExtras extras) implements ItemSource {
 
     private static final MiniMessage MM = MiniMessage.miniMessage();
 

@@ -32,6 +32,10 @@ public final class CreatorCorePlugin extends JavaPlugin {
     private dev.creatorcore.model.ModelMobs modelMobs;
     private dev.creatorcore.mob.MobBehaviors behaviors;
     private dev.creatorcore.command.MenuGui menu;
+    private dev.creatorcore.profile.ProfileManager profiles;
+    private dev.creatorcore.command.HubGui hub;
+    private dev.creatorcore.command.EditorGui editor;
+    private dev.creatorcore.command.ScreenListener ui;
 
     @Override
     public void onEnable() {
@@ -40,6 +44,7 @@ public final class CreatorCorePlugin extends JavaPlugin {
         blockKey = new NamespacedKey(this, "bloco");
         mobKey = new NamespacedKey(this, "mob");
 
+        profiles = new dev.creatorcore.profile.ProfileManager(this);
         models = new dev.creatorcore.model.ModelManager(this);
         packHost = new dev.creatorcore.pack.PackHost(this);
         modelMobs = new dev.creatorcore.model.ModelMobs(this);
@@ -61,6 +66,10 @@ public final class CreatorCorePlugin extends JavaPlugin {
         plugins.registerEvents(modelMobs, this);
         menu = new dev.creatorcore.command.MenuGui(this);
         plugins.registerEvents(menu, this);
+        ui = new dev.creatorcore.command.ScreenListener(this);
+        plugins.registerEvents(ui, this);
+        hub = new dev.creatorcore.command.HubGui(this);
+        editor = new dev.creatorcore.command.EditorGui(this);
         behaviors = new dev.creatorcore.mob.MobBehaviors(this);
         plugins.registerEvents(behaviors, this);
         packHost.rebuild();
@@ -130,6 +139,30 @@ public final class CreatorCorePlugin extends JavaPlugin {
 
     public dev.creatorcore.command.MenuGui menu() {
         return menu;
+    }
+
+    public dev.creatorcore.profile.ProfileManager profiles() {
+        return profiles;
+    }
+
+    public dev.creatorcore.command.ScreenListener ui() {
+        return ui;
+    }
+
+    /** Recarrega criações, pack e modelos (usado após salvar no editor, importar perfis e /cc recarregar). */
+    public ItemLoader.LoadResult reloadAll() {
+        var loaded = itemLoader.load();
+        packHost.rebuildAndRefresh();
+        modelMobs.refreshAll();
+        return loaded;
+    }
+
+    public dev.creatorcore.command.HubGui hub() {
+        return hub;
+    }
+
+    public dev.creatorcore.command.EditorGui editor() {
+        return editor;
     }
 
     public dev.creatorcore.mob.MobBehaviors behaviors() {

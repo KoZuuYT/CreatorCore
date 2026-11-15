@@ -31,7 +31,13 @@
 #                    "em: jogador" vale para o próprio mob e "em: alvo" para quem ele enfrenta.
 #                    gatilho: atacar (ao ferir alguém) | ferido (ao ser ferido) | periodica (a cada "recarga"
 #                    segundos, enquanto tem alvo; a recarga é obrigatória)
-#
+##   Extras (0.17.0), todos opcionais:
+#       nome-visivel: false | filhote: true | sem-ia: true | sem-gravidade: true | invulneravel: true
+#       pegar-itens: true|false | efeitos: {speed: 2, fire_resistance: 1}  (efeitos que nunca acabam)
+#       imune-a: [fogo, explosao, projetil, queda, afogamento, magia, corpo-a-corpo, raio, sufocamento, congelamento, cacto]
+#       som-ferido / som-morte: ex. entity.zombie.hurt | comandos-morte: ["say %jogador% venceu"]
+#       barra-chefe: {cor: RED, estilo: SEGMENTED_10, raio: 40}  -> barra de vida no topo da tela para quem está perto
+
 # O mob não some por distância (persistente). Visual = o do mob vanilla (sem textura própria).
 
 zumbi_forte:

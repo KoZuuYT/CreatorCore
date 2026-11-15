@@ -38,6 +38,12 @@
 #       O ícone do item vem do material (ou de "modelo:"); o material é só o ícone, qualquer um serve.
 #   Itens com modelo 3D do Blockbench: o bloco "display" do projeto (thirdperson_righthand,
 #       firstperson_righthand, gui, ground...) controla o tamanho/posição na mão, no inventário e no chão.
+#   Extras (0.17.0), todos opcionais:
+#       max-pilha: 1-99 | raridade: common|uncommon|rare|epic | durabilidade: usos máximos
+#       esconder-tooltip: true | esconder: [atributos, encantamentos, inquebravel, extra]
+#       comida: {nutricao, saturacao, tempo, sempre-comer}  -> o item vira comestível
+#       resistente-fogo: true | encantabilidade: 1-100 | cabeca: true (usável como capacete)
+#   Dica: no jogo, /cc abre um editor que preenche tudo isto por você (ver README, "Menu e perfis").
 
 cajado_teste:
   material: STICK

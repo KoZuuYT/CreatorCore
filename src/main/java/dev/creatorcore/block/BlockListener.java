@@ -62,6 +62,22 @@ public final class BlockListener implements Listener {
         BlockDefinition definition = (BlockDefinition) found.get();
         // Sem atualizar vizinhos: o estado do note block não pode ser recalculado pelo jogo.
         event.getBlockPlaced().setBlockData(blocks.states().data(definition.state()), false);
+        BlockExtras extras = definition.extras();
+        if (extras.placeSound() != null) {
+            event.getBlockPlaced().getWorld().playSound(event.getBlockPlaced().getLocation().add(0.5, 0.5, 0.5),
+                    extras.placeSound(), 1f, 1f);
+        }
+        runCommands(extras.placeCommands(), event.getPlayer(), event.getBlockPlaced());
+    }
+
+    /** Executa comandos no console substituindo %jogador% e %x% %y% %z%. */
+    private void runCommands(List<String> commands, Player player, Block block) {
+        for (String command : commands) {
+            String line = command.replace("%jogador%", player.getName()).replace("%x%", String.valueOf(block.getX()))
+                    .replace("%y%", String.valueOf(block.getY())).replace("%z%", String.valueOf(block.getZ()));
+            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(),
+                    line.startsWith("/") ? line.substring(1) : line);
+        }
     }
 
     // ── Quebrar e dropar ────────────────────────────────────────
@@ -76,23 +92,38 @@ public final class BlockListener implements Listener {
         mining.stop(player);
         event.setDropItems(false);
         event.setExpToDrop(0);
+        BlockExtras extras = definition.extras();
+        Location center = event.getBlock().getLocation().add(0.5, 0.5, 0.5);
+        if (extras.breakSound() != null) {
+            center.getWorld().playSound(center, extras.breakSound(), 1f, 1f);
+        }
+        if (extras.particle() != null) {
+            center.getWorld().spawnParticle(extras.particle(), center, extras.particleCount(), 0.3, 0.3, 0.3, 0.02);
+        }
+        runCommands(extras.breakCommands(), player, event.getBlock());
         if (player.getGameMode() == GameMode.CREATIVE || !definition.canHarvest(player.getInventory().getItemInMainHand())) {
             return;
         }
-        drop(definition, event.getBlock());
+        ItemStack tool = player.getInventory().getItemInMainHand();
+        drop(definition, event.getBlock(), tool.getEnchantmentLevel(org.bukkit.enchantments.Enchantment.FORTUNE));
+        if (extras.xp() > 0) {
+            center.getWorld().spawn(center, org.bukkit.entity.ExperienceOrb.class, orb -> orb.setExperience(extras.xp()));
+        }
     }
 
-    private void drop(BlockDefinition definition, Block block) {
+    private void drop(BlockDefinition definition, Block block, int fortune) {
         Location at = block.getLocation().add(0.5, 0.5, 0.5);
+        int multiplier = definition.extras().fortune() && fortune > 0
+                ? Math.max(1, ThreadLocalRandom.current().nextInt(fortune + 2)) : 1;
         if (definition.drops().isEmpty()) {
-            dropStack(at, definition.create(plugin, 1));
+            dropStack(at, definition.create(plugin, multiplier));
             return;
         }
         for (DropSpec drop : definition.drops()) {
             if (drop.chance() < 1.0 && ThreadLocalRandom.current().nextDouble() >= drop.chance()) {
                 continue;
             }
-            int amount = ThreadLocalRandom.current().nextInt(drop.min(), drop.max() + 1);
+            int amount = ThreadLocalRandom.current().nextInt(drop.min(), drop.max() + 1) * multiplier;
             ItemStack stack = amount > 0 ? plugin.itemLoader().resolveStack(drop.item(), amount) : null;
             if (stack != null) {
                 dropStack(at, stack);
@@ -131,9 +162,12 @@ public final class BlockListener implements Listener {
                 continue;
             }
             it.remove();
+            if (definition.extras().explosionProof()) {
+                continue;
+            }
             block.setType(Material.AIR);
             if (!definition.requiresTool()) {
-                drop(definition, block);
+                drop(definition, block, 0);
             }
         }
     }

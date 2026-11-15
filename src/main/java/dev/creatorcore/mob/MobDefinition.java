@@ -36,7 +36,7 @@ public record MobDefinition(String id, EntityType entity, String name, Map<Attri
                             int xp, boolean glowing, boolean silent, SpawnSpec spawn,
                             String model, double modelScale, double modelOffsetY,
                             double modelYaw, Map<String, String> animations,
-                            MobBehavior behavior) implements Creation {
+                            MobBehavior behavior, MobExtras extras) implements Creation {
 
     private static final MiniMessage MM = MiniMessage.miniMessage();
 
@@ -77,6 +77,27 @@ public record MobDefinition(String id, EntityType entity, String name, Map<Attri
             if (mob instanceof Mob m) {
                 m.setPersistent(true);
             }
+            if (!extras.nameVisible()) {
+                mob.setCustomNameVisible(false);
+            }
+            if (extras.baby() && mob instanceof org.bukkit.entity.Ageable ageable) {
+                ageable.setBaby();
+                ageable.setAgeLock(true);
+            }
+            if (extras.noAi()) {
+                mob.setAI(false);
+            }
+            if (extras.noGravity()) {
+                mob.setGravity(false);
+            }
+            if (extras.invulnerable()) {
+                mob.setInvulnerable(true);
+            }
+            if (extras.pickup() != null) {
+                mob.setCanPickupItems(extras.pickup());
+            }
+            extras.effects().forEach((type, level) -> mob.addPotionEffect(
+                    new org.bukkit.potion.PotionEffect(type, org.bukkit.potion.PotionEffect.INFINITE_DURATION, level - 1)));
         });
         plugin.modelMobs().attach(result, this);
         plugin.behaviors().track(result);

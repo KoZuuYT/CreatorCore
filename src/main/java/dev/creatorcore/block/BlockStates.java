@@ -51,6 +51,11 @@ public final class BlockStates {
         return models.get(model);
     }
 
+    /** Nomes dos modelos de bloco disponíveis (blocks.json), em ordem alfabética. */
+    public java.util.List<String> names() {
+        return models.keySet().stream().sorted().toList();
+    }
+
     public BlockData data(int state) {
         return Bukkit.createBlockData("minecraft:note_block[instrument=" + INSTRUMENTS[state / 50]
                 + ",note=" + ((state % 50) / 2) + ",powered=" + (state % 2 == 1) + "]");
