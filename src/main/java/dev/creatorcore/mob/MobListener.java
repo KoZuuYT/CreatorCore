@@ -61,7 +61,7 @@ public final class MobListener implements Listener {
         if (id == null) {
             return;
         }
-        plugin.modelMobs().detach(event.getEntity().getUniqueId());
+        plugin.modelMobs().detach(event.getEntity().getUniqueId(), event.getEntity().getLocation());
         var found = plugin.registry().get(CreationType.MOB, id);
         if (found.isEmpty()) {
             return; // definição removida: comportamento vanilla

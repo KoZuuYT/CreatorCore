@@ -57,13 +57,54 @@ def main() -> None:
         # rotação em vários eixos (o jogo não suporta: o plugin adapta em células)
         cube("espinho", [7, 10, 11], [9, 14, 15], rotation=[30, 45, 20], origin=[8, 12, 11]),
     ]
+    def gid(name):
+        return str(uuid.uuid5(uuid.NAMESPACE_DNS, "grupo_" + name))
+
+    def u(name):
+        return next(e["uuid"] for e in elements if e["name"] == name)
+
+    outliner = [{
+        "name": "tronco", "uuid": gid("tronco"), "origin": [8, 10, 8], "rotation": [0, 0, 0],
+        "children": [
+            u("corpo"), u("espinho"),
+            {"name": "cabeca", "uuid": gid("cabeca"), "origin": [8, 10, 8], "rotation": [0, 0, 0],
+             "children": [u("cabeca"), u("cristal")]},
+            {"name": "braco_e", "uuid": gid("braco_e"), "origin": [2, 10, 8], "rotation": [0, 0, 0],
+             "children": [u("braco_e")]},
+            {"name": "braco_d", "uuid": gid("braco_d"), "origin": [14, 10, 8], "rotation": [0, 0, 0],
+             "children": [u("braco_d")]},
+        ]}]
+
+    def key(t, x=0, y=0, z=0, channel="rotation"):
+        return {"channel": channel, "time": t, "data_points": [{"x": str(x), "y": str(y), "z": str(z)}]}
+
+    def animator(name, *keys):
+        return {"name": name, "type": "bone", "keyframes": list(keys)}
+
+    animations = [
+        {"name": "idle", "loop": "loop", "length": 2.0, "animators": {
+            gid("cabeca"): animator("cabeca", key(0, 0, 0, 0), key(1, 0, 0, 4), key(2, 0, 0, 0)),
+            gid("braco_d"): animator("braco_d", key(0, 0, 0, 0), key(1, 0, 0, -6), key(2, 0, 0, 0)),
+            gid("braco_e"): animator("braco_e", key(0, 0, 0, 0), key(1, 0, 0, 6), key(2, 0, 0, 0))}},
+        {"name": "walk", "loop": "loop", "length": 0.8, "animators": {
+            gid("braco_d"): animator("braco_d", key(0, 50), key(0.4, -50), key(0.8, 50)),
+            gid("braco_e"): animator("braco_e", key(0, -50), key(0.4, 50), key(0.8, -50)),
+            gid("tronco"): animator("tronco", key(0, 0, 0, 3), key(0.4, 0, 0, -3), key(0.8, 0, 0, 3))}},
+        {"name": "attack", "loop": "once", "length": 0.5, "animators": {
+            gid("braco_d"): animator("braco_d", key(0, 0), key(0.15, -120), key(0.5, 0)),
+            gid("braco_e"): animator("braco_e", key(0, 0), key(0.15, -120), key(0.5, 0))}},
+        {"name": "death", "loop": "hold", "length": 1.0, "animators": {
+            gid("tronco"): animator("tronco", key(0, 0), key(1.0, 90)),
+            gid("tronco"): animator("tronco", key(0, 0), key(1.0, 90))}},
+    ]
     project = {
         "meta": {"format_version": "4.10", "model_format": "free", "box_uv": False},
         "name": "golem_teste",
         "resolution": {"width": 16, "height": 16},
         "elements": elements,
-        "outliner": [e["uuid"] for e in elements],
+        "outliner": outliner,
         "textures": [{"id": "0", "name": "golem_teste.png", "source": texture()}],
+        "animations": animations,
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(project), encoding="utf-8")
@@ -99,6 +140,23 @@ def geo_example() -> None:
         }],
     }
     (OUT.parent / "robo_geo.geo.json").write_text(json.dumps(geo, indent=1), encoding="utf-8")
+    animations = {
+        "format_version": "1.8.0",
+        "animations": {
+            "animation.robo_geo.idle": {"loop": True, "animation_length": 2.0, "bones": {
+                "cabeca": {"rotation": {"0.0": [0, 0, 0], "1.0": [0, 15, 0], "2.0": [0, 0, 0]}},
+                "braco_d": {"rotation": {"0.0": [-30, 0, 15], "1.0": [-20, 0, 15], "2.0": [-30, 0, 15]}}}},
+            "animation.robo_geo.walk": {"loop": True, "animation_length": 0.8, "bones": {
+                "braco_d": {"rotation": {"0.0": [45, 0, 0], "0.4": [-45, 0, 0], "0.8": [45, 0, 0]}},
+                "braco_e": {"rotation": {"0.0": [-45, 0, 0], "0.4": [45, 0, 0], "0.8": [-45, 0, 0]}},
+                "corpo": {"position": {"0.0": [0, 0, 0], "0.2": [0, 1, 0], "0.4": [0, 0, 0], "0.6": [0, 1, 0], "0.8": [0, 0, 0]}}}},
+            "animation.robo_geo.attack": {"loop": False, "animation_length": 0.5, "bones": {
+                "braco_d": {"rotation": {"0.0": [0, 0, 0], "0.15": [-110, 0, 0], "0.5": [0, 0, 0]}}}},
+            "animation.robo_geo.death": {"loop": "hold_on_last_frame", "animation_length": 1.0, "bones": {
+                "raiz": {"rotation": {"0.0": [0, 0, 0], "1.0": [-90, 0, 0]}}}},
+        },
+    }
+    (OUT.parent / "robo_geo.animation.json").write_text(json.dumps(animations, indent=1), encoding="utf-8")
     print("OK: robo_geo.geo.json + robo_geo.png")
 
 

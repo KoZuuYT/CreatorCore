@@ -30,7 +30,7 @@ public final class ModelImporter {
     private static final int MAX_ELEMENTS = 3000;
 
     /** Modelo convertido: o JSON do modelo e suas texturas (nome do arquivo sem extensão -> PNG). */
-    public record Imported(String id, String modelJson, Map<String, byte[]> textures) {
+    public record Imported(String id, String modelJson, Map<String, byte[]> textures, Rig rig) {
     }
 
     /** Uma rotação em torno de um ponto (graus, convenção do Blockbench: aplica X, depois Y, depois Z). */
@@ -44,8 +44,18 @@ public final class ModelImporter {
     private record Face(int texture, double[] uv, int rotation) {
     }
 
-    /** Cubo com as rotações a aplicar, da mais interna (do cubo) à mais externa (grupo raiz). */
-    private record Cube(String name, double[] from, double[] to, List<Rot> chain, Map<String, Face> faces) {
+    /**
+     * Cubo com as rotações a aplicar, da mais interna (do cubo) à mais externa (grupo raiz).
+     *
+     * @param bone     chave do osso/grupo a que pertence
+     * @param ownCount quantas rotações do início da cadeia são do próprio cubo (o resto vem dos ossos)
+     */
+    private record Cube(String name, double[] from, double[] to, List<Rot> chain, Map<String, Face> faces,
+                        String bone, int ownCount) {
+    }
+
+    /** Osso em construção (antes da ordenação pai-antes-do-filho). */
+    private record RawBone(String key, String parent, double[] pivot, double[] bind) {
     }
 
     private ModelImporter() {
@@ -94,9 +104,11 @@ public final class ModelImporter {
 
         // Rotações dos grupos (do mais próximo ao mais externo), por uuid de elemento.
         Map<String, List<Rot>> groupChains = new LinkedHashMap<>();
+        List<RawBone> rawBones = new ArrayList<>();
+        Map<String, String> elementBone = new LinkedHashMap<>();
         if (project.has("outliner")) {
             for (JsonElement node : project.getAsJsonArray("outliner")) {
-                walk(node, new ArrayList<>(), groupChains);
+                walk(node, new ArrayList<>(), null, groupChains, rawBones, elementBone);
             }
         }
 
@@ -120,9 +132,12 @@ public final class ModelImporter {
             double[] rotation = e.has("rotation") ? vec(e.get("rotation"), 3) : new double[3];
             double[] origin = e.has("origin") ? vec(e.get("origin"), 3) : new double[3];
             addIfRotated(chain, origin, rotation);
-            if (e.has("uuid") && groupChains.containsKey(e.get("uuid").getAsString())) {
-                chain.addAll(groupChains.get(e.get("uuid").getAsString()));
+            int ownCount = chain.size();
+            String uuid = e.has("uuid") ? e.get("uuid").getAsString() : null;
+            if (uuid != null && groupChains.containsKey(uuid)) {
+                chain.addAll(groupChains.get(uuid));
             }
+            String bone = uuid != null && elementBone.containsKey(uuid) ? elementBone.get(uuid) : ROOT_BONE;
             Map<String, Face> faces = new LinkedHashMap<>();
             JsonObject bbFaces = e.has("faces") ? e.getAsJsonObject("faces") : new JsonObject();
             for (String face : FACES) {
@@ -138,36 +153,94 @@ public final class ModelImporter {
                 int faceRotation = f.has("rotation") ? ((f.get("rotation").getAsInt() % 360) + 360) % 360 : 0;
                 faces.put(face, new Face(f.get("texture").getAsInt(), uv, faceRotation));
             }
-            cubes.add(new Cube(e.has("name") ? e.get("name").getAsString() : "?", from, to, chain, faces));
+            cubes.add(new Cube(e.has("name") ? e.get("name").getAsString() : "?", from, to, chain, faces,
+                    bone, ownCount));
         }
         if (skipped > 0) {
             log.warning("Modelo '" + id + "': " + skipped + " elemento(s) que não são cubos (malhas etc.) foram ignorados.");
         }
         JsonObject display = project.has("display") && project.get("display").isJsonObject()
                 ? project.getAsJsonObject("display") : null;
-        return build(id, cubes, resW, resH, textureRefs, pngs, display, namespace, log);
+        Map<String, Rig.Animation> animations = new LinkedHashMap<>();
+        if (project.has("animations") && project.get("animations").isJsonArray()) {
+            for (JsonElement a : project.getAsJsonArray("animations")) {
+                try {
+                    Rig.Animation animation = parseBbAnimation(a.getAsJsonObject());
+                    animations.put(animation.name(), animation);
+                } catch (RuntimeException ex) {
+                    log.warning("Modelo '" + id + "': uma animação foi ignorada (" + ex.getMessage() + ").");
+                }
+            }
+        }
+        return build(id, cubes, rawBones, animations, resW, resH, textureRefs, pngs, display, namespace, log);
     }
 
-    /** Percorre o outliner: cada filho (uuid) recebe a cadeia de rotações dos grupos pais. */
-    private static void walk(JsonElement node, List<Rot> parents, Map<String, List<Rot>> out) {
+    private static final String ROOT_BONE = "__raiz";
+
+    /** Percorre o outliner: cada filho (uuid) recebe a cadeia de rotações dos grupos pais e o osso do grupo. */
+    private static void walk(JsonElement node, List<Rot> parents, String parentBone, Map<String, List<Rot>> out,
+                             List<RawBone> bones, Map<String, String> elementBone) {
         if (node.isJsonPrimitive()) {
             out.put(node.getAsString(), parents);
+            elementBone.put(node.getAsString(), parentBone == null ? ROOT_BONE : parentBone);
             return;
         }
         JsonObject group = node.getAsJsonObject();
-        List<Rot> chain = new ArrayList<>(parents);
-        if (group.has("rotation")) {
-            double[] org = group.has("origin") ? vec(group.get("origin"), 3) : new double[3];
-            // chain = do mais interno (este grupo) ao mais externo: este grupo vem antes dos pais
-            List<Rot> mine = new ArrayList<>();
-            addIfRotated(mine, org, vec(group.get("rotation"), 3));
-            mine.addAll(parents);
-            chain = mine;
-        }
+        String key = group.has("uuid") ? group.get("uuid").getAsString() : "g" + bones.size();
+        double[] org = group.has("origin") ? vec(group.get("origin"), 3) : new double[3];
+        double[] rot = group.has("rotation") ? vec(group.get("rotation"), 3) : new double[3];
+        bones.add(new RawBone(key, parentBone, org, rot));
+        // chain = do mais interno (este grupo) ao mais externo: este grupo vem antes dos pais
+        List<Rot> chain = new ArrayList<>();
+        addIfRotated(chain, org, rot);
+        chain.addAll(parents);
         if (group.has("children")) {
             for (JsonElement child : group.getAsJsonArray("children")) {
-                walk(child, chain, out);
+                walk(child, chain, key, out, bones, elementBone);
             }
+        }
+    }
+
+    private static Rig.Animation parseBbAnimation(JsonObject a) {
+        String name = a.has("name") ? a.get("name").getAsString() : "animacao";
+        double length = a.has("length") ? number(a.get("length")) : 0;
+        boolean loop = a.has("loop") && a.get("loop").getAsString().equals("loop");
+        Map<String, Rig.BoneAnim> bones = new LinkedHashMap<>();
+        if (a.has("animators") && a.get("animators").isJsonObject()) {
+            for (var entry : a.getAsJsonObject("animators").entrySet()) {
+                if (!entry.getValue().isJsonObject() || !entry.getValue().getAsJsonObject().has("keyframes")) {
+                    continue;
+                }
+                List<Rig.Keyframe> rotation = new ArrayList<>();
+                List<Rig.Keyframe> position = new ArrayList<>();
+                for (JsonElement k : entry.getValue().getAsJsonObject().getAsJsonArray("keyframes")) {
+                    JsonObject frame = k.getAsJsonObject();
+                    String channel = frame.has("channel") ? frame.get("channel").getAsString() : "";
+                    if (!channel.equals("rotation") && !channel.equals("position")
+                            || !frame.has("data_points") || frame.getAsJsonArray("data_points").isEmpty()) {
+                        continue;
+                    }
+                    JsonObject point = frame.getAsJsonArray("data_points").get(0).getAsJsonObject();
+                    double[] value = {point.has("x") ? number(point.get("x")) : 0,
+                            point.has("y") ? number(point.get("y")) : 0, point.has("z") ? number(point.get("z")) : 0};
+                    (channel.equals("rotation") ? rotation : position)
+                            .add(new Rig.Keyframe(frame.has("time") ? number(frame.get("time")) : 0, value));
+                    length = Math.max(length, frame.has("time") ? number(frame.get("time")) : 0);
+                }
+                rotation.sort(java.util.Comparator.comparingDouble(Rig.Keyframe::time));
+                position.sort(java.util.Comparator.comparingDouble(Rig.Keyframe::time));
+                bones.put(entry.getKey(), new Rig.BoneAnim(List.copyOf(rotation), List.copyOf(position)));
+            }
+        }
+        return new Rig.Animation(name, length, loop, bones);
+    }
+
+    /** Número ou texto numérico; fórmulas (Molang) viram 0. */
+    private static double number(JsonElement element) {
+        try {
+            return element.getAsDouble();
+        } catch (RuntimeException e) {
+            return 0;
         }
     }
 
@@ -177,7 +250,8 @@ public final class ModelImporter {
      * @param texturePng PNG da textura (arquivo irmão {@code <id>.png})
      * @throws IllegalArgumentException se o arquivo não for utilizável
      */
-    public static Imported convertGeo(String id, JsonObject geo, byte[] texturePng, String namespace, Logger log) {
+    public static Imported convertGeo(String id, JsonObject geo, JsonObject animationFile, byte[] texturePng,
+                                      String namespace, Logger log) {
         if (!validPng(texturePng)) {
             throw new IllegalArgumentException("a textura " + id + ".png não é um PNG válido (ou é grande demais)");
         }
@@ -198,7 +272,13 @@ public final class ModelImporter {
             bones.put(b.getAsJsonObject().get("name").getAsString(), b.getAsJsonObject());
         }
         List<Cube> cubes = new ArrayList<>();
+        List<RawBone> rawBones = new ArrayList<>();
         for (JsonObject bone : bones.values()) {
+            rawBones.add(new RawBone(bone.get("name").getAsString(),
+                    bone.has("parent") && bones.containsKey(bone.get("parent").getAsString())
+                            ? bone.get("parent").getAsString() : null,
+                    geoPoint(bone.has("pivot") ? vec(bone.get("pivot"), 3) : new double[3]),
+                    geoAngles(bone.has("rotation") ? vec(bone.get("rotation"), 3) : new double[3])));
             if (!bone.has("cubes")) {
                 continue;
             }
@@ -226,15 +306,86 @@ public final class ModelImporter {
                     double[] pivot = c.has("pivot") ? vec(c.get("pivot"), 3) : origin;
                     addIfRotated(chain, geoPoint(pivot), geoAngles(vec(c.get("rotation"), 3)));
                 }
+                int ownCount = chain.size();
                 chain.addAll(boneChain);
-                cubes.add(new Cube(bone.get("name").getAsString(), from, to, chain, geoFaces(c, size)));
+                cubes.add(new Cube(bone.get("name").getAsString(), from, to, chain, geoFaces(c, size),
+                        bone.get("name").getAsString(), ownCount));
             }
         }
         Map<String, byte[]> pngs = new LinkedHashMap<>();
         pngs.put(id + "_0", texturePng);
         Map<Integer, String> refs = new LinkedHashMap<>();
         refs.put(0, id + "_0");
-        return build(id, cubes, resW, resH, refs, pngs, null, namespace, log);
+        Map<String, Rig.Animation> animations = new LinkedHashMap<>();
+        if (animationFile != null && animationFile.has("animations") && animationFile.get("animations").isJsonObject()) {
+            for (var entry : animationFile.getAsJsonObject("animations").entrySet()) {
+                try {
+                    String name = entry.getKey().substring(entry.getKey().lastIndexOf('.') + 1);
+                    animations.put(name, parseGeoAnimation(name, entry.getValue().getAsJsonObject()));
+                } catch (RuntimeException ex) {
+                    log.warning("Modelo '" + id + "': a animação '" + entry.getKey() + "' foi ignorada (" + ex.getMessage() + ").");
+                }
+            }
+        }
+        return build(id, cubes, rawBones, animations, resW, resH, refs, pngs, null, namespace, log);
+    }
+
+    private static Rig.Animation parseGeoAnimation(String name, JsonObject a) {
+        double length = a.has("animation_length") ? number(a.get("animation_length")) : 0;
+        boolean loop = a.has("loop") && a.get("loop").isJsonPrimitive() && a.get("loop").getAsString().equals("true");
+        Map<String, Rig.BoneAnim> bones = new LinkedHashMap<>();
+        if (a.has("bones") && a.get("bones").isJsonObject()) {
+            for (var entry : a.getAsJsonObject("bones").entrySet()) {
+                JsonObject channels = entry.getValue().getAsJsonObject();
+                List<Rig.Keyframe> rotation = geoKeyframes(channels.get("rotation"), true);
+                List<Rig.Keyframe> position = geoKeyframes(channels.get("position"), false);
+                for (var list : List.of(rotation, position)) {
+                    if (!list.isEmpty()) {
+                        length = Math.max(length, list.get(list.size() - 1).time());
+                    }
+                }
+                bones.put(entry.getKey(), new Rig.BoneAnim(rotation, position));
+            }
+        }
+        return new Rig.Animation(name, length, loop, bones);
+    }
+
+    /** Canal Bedrock: vetor fixo, ou mapa tempo -> vetor ({@code post} se for objeto). */
+    private static List<Rig.Keyframe> geoKeyframes(JsonElement channel, boolean rotation) {
+        List<Rig.Keyframe> frames = new ArrayList<>();
+        if (channel == null || channel.isJsonNull()) {
+            return frames;
+        }
+        if (channel.isJsonArray()) {
+            frames.add(new Rig.Keyframe(0, geoVector(channel, rotation)));
+        } else if (channel.isJsonObject()) {
+            for (var entry : channel.getAsJsonObject().entrySet()) {
+                double time;
+                try {
+                    time = Double.parseDouble(entry.getKey());
+                } catch (NumberFormatException e) {
+                    continue; // chave que não é tempo (ex.: "vector", "lerp_mode")
+                }
+                JsonElement value = entry.getValue();
+                if (value.isJsonObject()) {
+                    JsonObject o = value.getAsJsonObject();
+                    value = o.has("post") ? o.get("post") : o.get("pre");
+                }
+                if (value != null && value.isJsonArray()) {
+                    frames.add(new Rig.Keyframe(time, geoVector(value, rotation)));
+                }
+            }
+        }
+        frames.sort(java.util.Comparator.comparingDouble(Rig.Keyframe::time));
+        return frames;
+    }
+
+    private static double[] geoVector(JsonElement array, boolean rotation) {
+        JsonArray a = array.getAsJsonArray();
+        double[] v = {a.size() > 0 ? number(a.get(0)) : 0, a.size() > 1 ? number(a.get(1)) : 0,
+                a.size() > 2 ? number(a.get(2)) : 0};
+        // Bedrock -> convenção interna: gira com X e Y invertidos; posição com X invertido.
+        return rotation ? new double[] {-v[0], -v[1], v[2]} : new double[] {-v[0], v[1], v[2]};
     }
 
     /** Bedrock: origem no centro dos pés (x, z) -> modelo do jogo, de 0 a 16. */
@@ -278,47 +429,100 @@ public final class ModelImporter {
 
     // ── Construção do modelo do jogo ────────────────────────────
 
-    private static Imported build(String id, List<Cube> cubes, int resW, int resH, Map<Integer, String> textureRefs,
-                                  Map<String, byte[]> pngs, JsonObject display, String namespace, Logger log) {
+    private static Imported build(String id, List<Cube> cubes, List<RawBone> rawBones,
+                                  Map<String, Rig.Animation> animations, int resW, int resH,
+                                  Map<Integer, String> textureRefs, Map<String, byte[]> pngs, JsonObject display,
+                                  String namespace, Logger log) {
+        JsonObject textureMap = new JsonObject();
+        for (var entry : textureRefs.entrySet()) {
+            textureMap.addProperty("t" + entry.getKey(), namespace + ":item/" + entry.getValue());
+        }
+        textureMap.addProperty("particle", namespace + ":item/" + textureRefs.values().iterator().next());
+
+        // Modelo único (itens e mobs sem animação): todas as rotações dos ossos já aplicadas.
+        int[] adapted = {0};
+        JsonArray whole = elements(id, cubes, false, resW, resH, adapted, log);
+        if (whole.isEmpty()) {
+            throw new IllegalArgumentException("o modelo não tem cubos (malhas e outros tipos não são suportados)");
+        }
+        if (whole.size() > MAX_ELEMENTS) {
+            throw new IllegalArgumentException("o modelo ficou com " + whole.size() + " elementos (máx. " + MAX_ELEMENTS
+                    + "); simplifique as rotações");
+        }
+        if (adapted[0] > 0) {
+            log.info("Modelo '" + id + "': " + adapted[0] + " cubo(s) com rotação não suportada pelo jogo foram adaptados ("
+                    + whole.size() + " elementos no total).");
+        }
+        String wholeJson = modelJson(textureMap, whole, display);
+
+        // Esqueleto: um modelo por osso, só com os cubos dele (as rotações dos ossos ficam por conta da animação).
+        Rig rig = null;
+        if (!animations.isEmpty()) {
+            List<Rig.Bone> ordered = orderBones(rawBones, cubes);
+            Map<String, String> boneModels = new LinkedHashMap<>();
+            int[] ignored = {0};
+            for (Rig.Bone bone : ordered) {
+                List<Cube> own = cubes.stream().filter(c -> c.bone().equals(bone.key())).toList();
+                if (own.isEmpty()) {
+                    continue;
+                }
+                boneModels.put(bone.key(), modelJson(textureMap, elements(id, own, true, resW, resH, ignored, log), null));
+            }
+            rig = new Rig(List.copyOf(ordered), boneModels, Map.copyOf(animations));
+            log.info("Modelo '" + id + "': " + animations.size() + " animação(ões) (" + String.join(", ", animations.keySet())
+                    + "), " + boneModels.size() + " parte(s) animada(s).");
+        }
+        return new Imported(id, wholeJson, pngs, rig);
+    }
+
+    private static JsonArray elements(String id, List<Cube> cubes, boolean ownOnly, int resW, int resH, int[] adapted,
+                                      Logger log) {
         JsonArray out = new JsonArray();
-        int adapted = 0;
         for (Cube cube : cubes) {
-            if (outOfRange(cube.from()) || outOfRange(cube.to())) {
+            if (!ownOnly && (outOfRange(cube.from()) || outOfRange(cube.to()))) {
                 log.warning("Modelo '" + id + "': cubo '" + cube.name() + "' passa dos limites do jogo (-16 a 32); o jogo pode recortá-lo.");
             }
-            List<Rot> chain = cube.chain();
+            List<Rot> chain = ownOnly ? cube.chain().subList(0, cube.ownCount()) : cube.chain();
             if (chain.isEmpty()) {
                 out.add(element(cube.from(), cube.to(), null, faces(cube.faces(), resW, resH)));
             } else if (chain.size() == 1 && nativeRotation(chain.get(0)) != null) {
                 out.add(element(cube.from(), cube.to(), nativeRotation(chain.get(0)), faces(cube.faces(), resW, resH)));
             } else {
-                adapted++;
-                voxelize(cube, resW, resH, out);
+                adapted[0]++;
+                voxelize(new Cube(cube.name(), cube.from(), cube.to(), chain, cube.faces(), cube.bone(), cube.ownCount()),
+                        resW, resH, out);
             }
         }
-        if (out.isEmpty()) {
-            throw new IllegalArgumentException("o modelo não tem cubos (malhas e outros tipos não são suportados)");
-        }
-        if (out.size() > MAX_ELEMENTS) {
-            throw new IllegalArgumentException("o modelo ficou com " + out.size() + " elementos (máx. " + MAX_ELEMENTS
-                    + "); simplifique as rotações");
-        }
-        if (adapted > 0) {
-            log.info("Modelo '" + id + "': " + adapted + " cubo(s) com rotação não suportada pelo jogo foram adaptados ("
-                    + out.size() + " elementos no total).");
-        }
+        return out;
+    }
+
+    private static String modelJson(JsonObject textures, JsonArray elements, JsonObject display) {
         JsonObject model = new JsonObject();
-        JsonObject texMap = new JsonObject();
-        for (var entry : textureRefs.entrySet()) {
-            texMap.addProperty("t" + entry.getKey(), namespace + ":item/" + entry.getValue());
-        }
-        texMap.addProperty("particle", namespace + ":item/" + textureRefs.values().iterator().next());
-        model.add("textures", texMap);
-        model.add("elements", out);
+        model.add("textures", textures);
+        model.add("elements", elements);
         if (display != null) {
             model.add("display", display);
         }
-        return new Imported(id, model.toString(), pngs);
+        return model.toString();
+    }
+
+    /** Ossos com pai antes do filho; o osso raiz implícito do bbmodel entra se algum cubo o usar. */
+    private static List<Rig.Bone> orderBones(List<RawBone> raw, List<Cube> cubes) {
+        List<RawBone> all = new ArrayList<>(raw);
+        if (cubes.stream().anyMatch(c -> c.bone().equals(ROOT_BONE))) {
+            all.add(0, new RawBone(ROOT_BONE, null, new double[3], new double[3]));
+        }
+        List<Rig.Bone> ordered = new ArrayList<>();
+        java.util.Set<String> placed = new java.util.HashSet<>();
+        for (int pass = 0; pass < all.size() + 1 && ordered.size() < all.size(); pass++) {
+            for (RawBone b : all) {
+                if (!placed.contains(b.key()) && (b.parent() == null || placed.contains(b.parent()))) {
+                    ordered.add(new Rig.Bone(b.key(), b.parent(), b.pivot(), b.bind()));
+                    placed.add(b.key());
+                }
+            }
+        }
+        return ordered;
     }
 
     private static JsonObject element(double[] from, double[] to, JsonObject rotation, JsonObject faces) {

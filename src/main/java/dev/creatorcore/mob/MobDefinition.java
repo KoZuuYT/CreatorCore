@@ -28,13 +28,14 @@ import org.bukkit.persistence.PersistentDataType;
  * @param keepVanillaDrops mantém também os drops vanilla da espécie
  * @param xp         experiência ao morrer (-1 = a vanilla)
  * @param spawn      spawn natural (null = só por /cc invocar)
+ * @param animations papel (parado, andando, ataque, morte) -> nome da animação; vazio = detecção automática
  * @param model      modelo importado do Blockbench (models/&lt;id&gt;.bbmodel); null = visual do mob base
  */
 public record MobDefinition(String id, EntityType entity, String name, Map<Attribute, Double> attributes,
                             Map<EquipmentSlot, String> equipment, List<DropSpec> drops, boolean keepVanillaDrops,
                             int xp, boolean glowing, boolean silent, SpawnSpec spawn,
                             String model, double modelScale, double modelOffsetY,
-                            double modelYaw) implements Creation {
+                            double modelYaw, Map<String, String> animations) implements Creation {
 
     private static final MiniMessage MM = MiniMessage.miniMessage();
 

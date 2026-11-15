@@ -34,6 +34,10 @@ public final class ModelManager {
         return id != null && models.containsKey(id);
     }
 
+    public ModelImporter.Imported get(String id) {
+        return id == null ? null : models.get(id);
+    }
+
     public int count() {
         return models.size();
     }
@@ -68,8 +72,11 @@ public final class ModelManager {
                         if (!texture.isFile()) {
                             throw new IllegalArgumentException("falta a textura " + texture.getName() + " ao lado do arquivo");
                         }
-                        loaded.put(id, ModelImporter.convertGeo(id, project, Files.readAllBytes(texture.toPath()),
-                                NAMESPACE, plugin.getLogger()));
+                        File animations = new File(dir, file.getName().substring(0, file.getName().length() - ".geo.json".length()) + ".animation.json");
+                        JsonObject animationFile = animations.isFile() ? JsonParser.parseString(
+                                Files.readString(animations.toPath(), StandardCharsets.UTF_8)).getAsJsonObject() : null;
+                        loaded.put(id, ModelImporter.convertGeo(id, project, animationFile,
+                                Files.readAllBytes(texture.toPath()), NAMESPACE, plugin.getLogger()));
                     } else {
                         loaded.put(id, ModelImporter.convert(id, project, NAMESPACE, plugin.getLogger()));
                     }
@@ -92,6 +99,20 @@ public final class ModelManager {
             entries.put("assets/" + NAMESPACE + "/items/" + id + ".json",
                     ("{\"model\":{\"type\":\"minecraft:model\",\"model\":\"" + NAMESPACE + ":item/" + id + "\"}}")
                             .getBytes(StandardCharsets.UTF_8));
+            if (model.rig() != null) {
+                int index = 0;
+                for (var bone : model.rig().bones()) {
+                    String json = model.rig().boneModels().get(bone.key());
+                    if (json != null) {
+                        String part = Rig.partId(id, index);
+                        entries.put("assets/" + NAMESPACE + "/models/item/" + part + ".json", json.getBytes(StandardCharsets.UTF_8));
+                        entries.put("assets/" + NAMESPACE + "/items/" + part + ".json",
+                                ("{\"model\":{\"type\":\"minecraft:model\",\"model\":\"" + NAMESPACE + ":item/" + part + "\"}}")
+                                        .getBytes(StandardCharsets.UTF_8));
+                    }
+                    index++;
+                }
+            }
             model.textures().forEach((name, png) ->
                     entries.put("assets/" + NAMESPACE + "/textures/item/" + name + ".png", png));
         }

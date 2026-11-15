@@ -73,6 +73,7 @@ public final class ItemLoader {
             plugin.saveResource("models/golem_teste.bbmodel", false);
             plugin.saveResource("models/robo_geo.geo.json", false);
             plugin.saveResource("models/robo_geo.png", false);
+            plugin.saveResource("models/robo_geo.animation.json", false);
         }
         if (!new File(plugin.getDataFolder(), "mobs").exists()) {
             plugin.saveResource("mobs/exemplo.yml", false);
@@ -304,7 +305,22 @@ public final class ItemLoader {
                 List.copyOf(drops), s.getBoolean("drops-vanilla", false), s.getInt("xp", -1),
                 s.getBoolean("brilho", false), s.getBoolean("silencioso", false), parseSpawn(s),
                 parseModel(s), s.getDouble("escala-modelo", 1.0), s.getDouble("deslocamento-y", 0.0),
-                s.getDouble("rotacao-modelo", 180.0));
+                s.getDouble("rotacao-modelo", 180.0), parseAnimations(s));
+    }
+
+    /** {@code animacoes:} papel (parado, andando, ataque, morte) -> nome da animação do modelo. */
+    private static Map<String, String> parseAnimations(ConfigurationSection s) {
+        ConfigurationSection n = s.getConfigurationSection("animacoes");
+        Map<String, String> result = new LinkedHashMap<>();
+        if (n != null) {
+            for (String role : n.getKeys(false)) {
+                if (!Set.of("parado", "andando", "ataque", "morte").contains(role)) {
+                    throw new IllegalArgumentException("animacoes: papel inválido '" + role + "' (parado, andando, ataque, morte)");
+                }
+                result.put(role, n.getString(role, ""));
+            }
+        }
+        return Map.copyOf(result);
     }
 
     private static SpawnSpec parseSpawn(ConfigurationSection s) {
