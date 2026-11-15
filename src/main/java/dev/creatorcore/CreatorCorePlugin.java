@@ -31,6 +31,7 @@ public final class CreatorCorePlugin extends JavaPlugin {
     private dev.creatorcore.pack.PackHost packHost;
     private dev.creatorcore.model.ModelMobs modelMobs;
     private dev.creatorcore.mob.MobBehaviors behaviors;
+    private dev.creatorcore.command.MenuGui menu;
 
     @Override
     public void onEnable() {
@@ -58,6 +59,8 @@ public final class CreatorCorePlugin extends JavaPlugin {
         plugins.registerEvents(new dev.creatorcore.mob.MobListener(this), this);
         plugins.registerEvents(new dev.creatorcore.item.AbilityListener(this), this);
         plugins.registerEvents(modelMobs, this);
+        menu = new dev.creatorcore.command.MenuGui(this);
+        plugins.registerEvents(menu, this);
         behaviors = new dev.creatorcore.mob.MobBehaviors(this);
         plugins.registerEvents(behaviors, this);
         packHost.rebuild();
@@ -123,6 +126,10 @@ public final class CreatorCorePlugin extends JavaPlugin {
 
     public dev.creatorcore.pack.PackHost packHost() {
         return packHost;
+    }
+
+    public dev.creatorcore.command.MenuGui menu() {
+        return menu;
     }
 
     public dev.creatorcore.mob.MobBehaviors behaviors() {

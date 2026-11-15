@@ -66,9 +66,16 @@ public final class CreatorCommand implements TabExecutor {
                         String.valueOf(loaded.items()), String.valueOf(loaded.blocks()), String.valueOf(loaded.mobs()),
                         String.valueOf(loaded.recipes()));
             }
+            case "menu" -> {
+                if (sender instanceof Player player) {
+                    plugin.menu().open(player, CreationType.ITEM, 0);
+                } else {
+                    send(sender, "<red>Apenas jogadores podem abrir o menu.");
+                }
+            }
             case "dar" -> give(sender, args);
             case "invocar" -> summon(sender, args);
-            default -> send(sender, "<gray>Uso: <white>/cc [versao|pacote|atualizar|listar|recarregar|dar <id> [jogador] [quantidade]|invocar <id> [quantidade]]");
+            default -> send(sender, "<gray>Uso: <white>/cc [versao|menu|pacote|atualizar|listar|recarregar|dar <id> [jogador] [quantidade]|invocar <id> [quantidade]]");
         }
         return true;
     }
@@ -195,7 +202,7 @@ public final class CreatorCommand implements TabExecutor {
     public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
         boolean admin = sender.hasPermission(PERM);
         if (args.length == 1) {
-            return admin ? List.of("versao", "pacote", "atualizar", "listar", "recarregar", "dar", "invocar")
+            return admin ? List.of("versao", "menu", "pacote", "atualizar", "listar", "recarregar", "dar", "invocar")
                     : List.of("versao", "pacote");
         }
         String typed = args[args.length - 1].toLowerCase(Locale.ROOT);

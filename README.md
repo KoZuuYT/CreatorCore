@@ -33,6 +33,10 @@ Hub de criações customizadas para o Minecraft vanilla (itens, mobs, blocos e m
 
 **Aplicativo:** `tools\CreatorCoreServer.exe` liga e desliga o servidor de teste (status, log, comandos por RCON, copia o jar mais novo de `libs\` para `run\plugins\`). Para recompilar: `tools\build-launcher.ps1` (usa o `csc.exe` do Windows).
 
+## Menu
+
+`/cc menu` abre um inventário com abas Itens, Blocos e Mobs (permissão `creatorcore.admin`). Clique para pegar 1 (Shift: pilha cheia) ou invocar 1 mob (Shift: 5) onde você mira.
+
 ## Definindo itens
 
 Em `plugins/CreatorCore/items/*.yml`, cada chave de nível superior é o id do item (minúsculas, números e `_`):
@@ -178,3 +182,4 @@ O plugin consulta a última release de `KoZuuYT/CreatorCore` a cada 30 min, baix
 | 0.13.0 | Animações dos modelos (Blockbench e GeckoLib/Bedrock): um display por osso, estados parado/andando/ataque/morte; `animacoes:` nos mobs |
 | 0.14.0 | Armaduras customizadas (`armadura:`) com textura própria no corpo, vindas de `armor/<nome>_1.png` e `_2.png`; documentação do `display` para itens 3D na mão |
 | 0.15.0 | Comportamento de mobs em YAML: passivo, domável, ataque à distância e habilidades (atacar, ferido, periodica); drops com chance e so-jogador |
+| 0.16.0 | Menu gráfico `/cc menu`: abas Itens, Blocos e Mobs com paginação; clique pega o item ou invoca o mob (Shift = pilha cheia / 5 mobs) |
