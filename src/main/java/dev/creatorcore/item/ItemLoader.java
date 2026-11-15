@@ -71,6 +71,8 @@ public final class ItemLoader {
         }
         if (!new File(plugin.getDataFolder(), "models").exists()) {
             plugin.saveResource("models/golem_teste.bbmodel", false);
+            plugin.saveResource("models/robo_geo.geo.json", false);
+            plugin.saveResource("models/robo_geo.png", false);
         }
         if (!new File(plugin.getDataFolder(), "mobs").exists()) {
             plugin.saveResource("mobs/exemplo.yml", false);
@@ -301,7 +303,8 @@ public final class ItemLoader {
         return new MobDefinition(id, entity, s.getString("nome", ""), Map.copyOf(attributes), Map.copyOf(equipment),
                 List.copyOf(drops), s.getBoolean("drops-vanilla", false), s.getInt("xp", -1),
                 s.getBoolean("brilho", false), s.getBoolean("silencioso", false), parseSpawn(s),
-                parseModel(s), s.getDouble("escala-modelo", 1.0), s.getDouble("deslocamento-y", 0.0));
+                parseModel(s), s.getDouble("escala-modelo", 1.0), s.getDouble("deslocamento-y", 0.0),
+                s.getDouble("rotacao-modelo", 180.0));
     }
 
     private static SpawnSpec parseSpawn(ConfigurationSection s) {

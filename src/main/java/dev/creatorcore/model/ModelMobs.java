@@ -33,6 +33,8 @@ public final class ModelMobs implements Listener {
 
     private final CreatorCorePlugin plugin;
     private final Map<UUID, ItemDisplay> displays = new HashMap<>();
+    /** Giro extra do modelo (Blockbench desenha a frente voltada para o norte; o mob olha para o sul). */
+    private final Map<UUID, Double> yawOffsets = new HashMap<>();
     private BukkitTask task;
 
     public ModelMobs(CreatorCorePlugin plugin) {
@@ -56,6 +58,7 @@ public final class ModelMobs implements Listener {
     public void refreshAll() {
         displays.values().forEach(Entity::remove);
         displays.clear();
+        yawOffsets.clear();
         for (var world : Bukkit.getWorlds()) {
             for (LivingEntity living : world.getLivingEntities()) {
                 attachIfCustom(living);
@@ -103,10 +106,12 @@ public final class ModelMobs implements Listener {
             d.setPersistent(false);
         });
         displays.put(mob.getUniqueId(), display);
+        yawOffsets.put(mob.getUniqueId(), def.modelYaw());
     }
 
     public void detach(UUID mobId) {
         ItemDisplay display = displays.remove(mobId);
+        yawOffsets.remove(mobId);
         if (display != null) {
             display.remove();
         }
@@ -120,10 +125,13 @@ public final class ModelMobs implements Listener {
             ItemDisplay display = entry.getValue();
             if (mob == null || !mob.isValid() || mob.isDead() || !display.isValid()) {
                 display.remove();
+                yawOffsets.remove(entry.getKey());
                 it.remove();
                 continue;
             }
-            display.teleport(mob.getLocation());
+            Location where = mob.getLocation();
+            where.setYaw((float) (where.getYaw() + yawOffsets.getOrDefault(entry.getKey(), 180.0)));
+            display.teleport(where);
         }
     }
 }

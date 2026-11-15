@@ -33,7 +33,8 @@ import org.bukkit.persistence.PersistentDataType;
 public record MobDefinition(String id, EntityType entity, String name, Map<Attribute, Double> attributes,
                             Map<EquipmentSlot, String> equipment, List<DropSpec> drops, boolean keepVanillaDrops,
                             int xp, boolean glowing, boolean silent, SpawnSpec spawn,
-                            String model, double modelScale, double modelOffsetY) implements Creation {
+                            String model, double modelScale, double modelOffsetY,
+                            double modelYaw) implements Creation {
 
     private static final MiniMessage MM = MiniMessage.miniMessage();
 

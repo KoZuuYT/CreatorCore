@@ -54,6 +54,8 @@ def main() -> None:
         cube("braco_e", [0, 2, 6], [4, 10, 10]),
         cube("braco_d", [12, 2, 6], [16, 10, 10]),
         cube("cristal", [7, 17, 7], [9, 21, 9], rotation=[0, 45, 0], origin=[8, 19, 8]),
+        # rotação em vários eixos (o jogo não suporta: o plugin adapta em células)
+        cube("espinho", [7, 10, 11], [9, 14, 15], rotation=[30, 45, 20], origin=[8, 12, 11]),
     ]
     project = {
         "meta": {"format_version": "4.10", "model_format": "free", "box_uv": False},
@@ -68,5 +70,38 @@ def main() -> None:
     print(f"OK: {OUT.relative_to(ROOT)}")
 
 
+def geo_example() -> None:
+    """robo_geo.geo.json + robo_geo.png: geometria Bedrock/GeckoLib (ossos, pivôs e rotações), sem animações."""
+    rng = random.Random(11)
+    image = Image.new("RGBA", (64, 64))
+    for y in range(64):
+        for x in range(64):
+            g = rng.randint(150, 190)
+            image.putpixel((x, y), (g - 40, g - 20, g, 255))
+    for x in range(64):
+        image.putpixel((x, 0), (30, 40, 70, 255))
+    image.save(OUT.parent / "robo_geo.png")
+    geo = {
+        "format_version": "1.12.0",
+        "minecraft:geometry": [{
+            "description": {"identifier": "geometry.robo_geo", "texture_width": 64, "texture_height": 64},
+            "bones": [
+                {"name": "raiz", "pivot": [0, 0, 0]},
+                {"name": "corpo", "parent": "raiz", "pivot": [0, 10, 0],
+                 "cubes": [{"origin": [-4, 0, -2], "size": [8, 10, 4], "uv": [16, 16]}]},
+                {"name": "cabeca", "parent": "corpo", "pivot": [0, 10, 0],
+                 "cubes": [{"origin": [-3, 10, -3], "size": [6, 6, 6], "uv": [0, 0]}]},
+                {"name": "braco_d", "parent": "corpo", "pivot": [-5, 9, 0], "rotation": [-30, 0, 15],
+                 "cubes": [{"origin": [-8, 1, -1.5], "size": [3, 9, 3], "uv": [40, 16]}]},
+                {"name": "braco_e", "parent": "corpo", "pivot": [5, 9, 0], "rotation": [20, 0, -40],
+                 "cubes": [{"origin": [5, 1, -1.5], "size": [3, 9, 3], "uv": [40, 16]}]},
+            ],
+        }],
+    }
+    (OUT.parent / "robo_geo.geo.json").write_text(json.dumps(geo, indent=1), encoding="utf-8")
+    print("OK: robo_geo.geo.json + robo_geo.png")
+
+
 if __name__ == "__main__":
     main()
+    geo_example()

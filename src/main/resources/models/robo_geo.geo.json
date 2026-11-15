@@ -1,0 +1,140 @@
+{
+ "format_version": "1.12.0",
+ "minecraft:geometry": [
+  {
+   "description": {
+    "identifier": "geometry.robo_geo",
+    "texture_width": 64,
+    "texture_height": 64
+   },
+   "bones": [
+    {
+     "name": "raiz",
+     "pivot": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "name": "corpo",
+     "parent": "raiz",
+     "pivot": [
+      0,
+      10,
+      0
+     ],
+     "cubes": [
+      {
+       "origin": [
+        -4,
+        0,
+        -2
+       ],
+       "size": [
+        8,
+        10,
+        4
+       ],
+       "uv": [
+        16,
+        16
+       ]
+      }
+     ]
+    },
+    {
+     "name": "cabeca",
+     "parent": "corpo",
+     "pivot": [
+      0,
+      10,
+      0
+     ],
+     "cubes": [
+      {
+       "origin": [
+        -3,
+        10,
+        -3
+       ],
+       "size": [
+        6,
+        6,
+        6
+       ],
+       "uv": [
+        0,
+        0
+       ]
+      }
+     ]
+    },
+    {
+     "name": "braco_d",
+     "parent": "corpo",
+     "pivot": [
+      -5,
+      9,
+      0
+     ],
+     "rotation": [
+      -30,
+      0,
+      15
+     ],
+     "cubes": [
+      {
+       "origin": [
+        -8,
+        1,
+        -1.5
+       ],
+       "size": [
+        3,
+        9,
+        3
+       ],
+       "uv": [
+        40,
+        16
+       ]
+      }
+     ]
+    },
+    {
+     "name": "braco_e",
+     "parent": "corpo",
+     "pivot": [
+      5,
+      9,
+      0
+     ],
+     "rotation": [
+      20,
+      0,
+      -40
+     ],
+     "cubes": [
+      {
+       "origin": [
+        5,
+        1,
+        -1.5
+       ],
+       "size": [
+        3,
+        9,
+        3
+       ],
+       "uv": [
+        40,
+        16
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

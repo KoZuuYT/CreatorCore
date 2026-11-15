@@ -43,12 +43,18 @@ public final class ModelManager {
         File dir = new File(plugin.getDataFolder(), "models");
         dir.mkdirs();
         Map<String, ModelImporter.Imported> loaded = new LinkedHashMap<>();
-        File[] files = dir.listFiles((d, name) -> name.toLowerCase(Locale.ROOT).endsWith(".bbmodel"));
+        File[] files = dir.listFiles((d, name) -> name.toLowerCase(Locale.ROOT).endsWith(".bbmodel")
+                || name.toLowerCase(Locale.ROOT).endsWith(".geo.json"));
         if (files != null) {
             Arrays.sort(files, Comparator.comparing(File::getName));
             for (File file : files) {
-                String id = file.getName().substring(0, file.getName().length() - ".bbmodel".length()).toLowerCase(Locale.ROOT);
+                boolean geo = file.getName().toLowerCase(Locale.ROOT).endsWith(".geo.json");
+                String id = file.getName().substring(0,
+                        file.getName().length() - (geo ? ".geo.json" : ".bbmodel").length()).toLowerCase(Locale.ROOT);
                 try {
+                    if (loaded.containsKey(id)) {
+                        throw new IllegalArgumentException("já existe outro modelo com o id '" + id + "'");
+                    }
                     if (!CreationRegistry.isValidId(id)) {
                         throw new IllegalArgumentException("nome de arquivo inválido (use minúsculas, números e _)");
                     }
@@ -57,7 +63,16 @@ public final class ModelManager {
                     }
                     JsonObject project = JsonParser.parseString(
                             Files.readString(file.toPath(), StandardCharsets.UTF_8)).getAsJsonObject();
-                    loaded.put(id, ModelImporter.convert(id, project, NAMESPACE, plugin.getLogger()));
+                    if (geo) {
+                        File texture = new File(dir, file.getName().substring(0, file.getName().length() - ".geo.json".length()) + ".png");
+                        if (!texture.isFile()) {
+                            throw new IllegalArgumentException("falta a textura " + texture.getName() + " ao lado do arquivo");
+                        }
+                        loaded.put(id, ModelImporter.convertGeo(id, project, Files.readAllBytes(texture.toPath()),
+                                NAMESPACE, plugin.getLogger()));
+                    } else {
+                        loaded.put(id, ModelImporter.convert(id, project, NAMESPACE, plugin.getLogger()));
+                    }
                 } catch (IOException | RuntimeException e) {
                     plugin.getLogger().warning("models/" + file.getName() + " ignorado (" + e.getMessage() + ").");
                 }

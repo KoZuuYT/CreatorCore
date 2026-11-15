@@ -108,7 +108,10 @@ Coloque projetos salvos **com as texturas embutidas** em `plugins/CreatorCore/mo
 
 - **Itens:** `modelo: <id>` no item usa o modelo importado (o `material` é só o visual de quem não carregar o pack).
 - **Mobs:** `modelo: <id>` (+ `escala-modelo`, `deslocamento-y`) deixa o mob base invisível e um modelo acompanha seus movimentos (sem animações; equipamento fica oculto).
-- **Suportado:** cubos, UV por face, texturas PNG embutidas, rotação de um eixo em passos de 22,5° até 45° (do cubo ou do grupo), `display`. **Não suportado** (ignorado com aviso): malhas, rotação em vários eixos ou ângulos livres, animações. Exemplo gerado: `golem_teste.bbmodel` (`tools/models/build_example.py`).
+- **GeckoLib / Bedrock:** `models/<id>.geo.json` (formato 1.12+, `minecraft:geometry`) com a textura `models/<id>.png` ao lado. Ossos, pivôs, rotações e UV (caixa ou por face) são convertidos; as animações não (o modelo fica na pose do arquivo). Modelos de mods (Fabric/Forge) que usam esse formato funcionam do mesmo jeito.
+- **Rotações adaptadas:** o jogo só aceita um eixo, em passos de 22,5° até 45°. Cubos com rotação em vários eixos, ângulo livre ou grupos aninhados girados são **adaptados**: o plugin os fatia em pequenas células, gira cada uma e remonta sem rotação, mantendo forma e posição (a borda fica levemente serrilhada e a orientação da textura é aproximada). Um modelo pode ter até 3000 elementos.
+- **Frente do modelo:** Blockbench/Bedrock desenham a frente voltada para o norte; por isso o mob gira o modelo 180° (`rotacao-modelo`, padrão 180).
+- **Suportado:** cubos, UV por face, texturas PNG, `display` (bbmodel). **Não suportado** (ignorado com aviso): malhas, animações. Exemplos gerados: `golem_teste.bbmodel` e `robo_geo.geo.json` (`tools/models/build_example.py`).
 
 ## Resource pack
 
@@ -136,3 +139,4 @@ O plugin consulta a última release de `KoZuuYT/CreatorCore` a cada 30 min, baix
 | 0.9.0 | Receitas de cozimento (fornalha, alto-forno, defumador, fogueira) para itens e blocos, com `cc:<id>` como entrada |
 | 0.10.0 | Habilidades de itens: gatilhos (clique, Shift+clique, bater) com recarga e ações (efeito, cura, dano, raio, projétil, impulso, som, comando) |
 | 0.11.0 | Importação de modelos do Blockbench (`.bbmodel`) para itens e mobs: pack próprio montado e servido pelo plugin (HTTP embutido) |
+| 0.12.0 | Modelos GeckoLib/Bedrock (`.geo.json` + `.png`) e rotações não suportadas pelo jogo adaptadas automaticamente (cubos fatiados em células); `rotacao-modelo` nos mobs |
